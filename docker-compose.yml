@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: service-center-backend
+    ports:
+      - "5011:5000"
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: service-center-frontend
+    ports:
+      - "3007:3000"
+    depends_on:
+      - backend
+    restart: always
