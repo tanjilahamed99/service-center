@@ -33,7 +33,7 @@ app.use("/api/service-center", serviceCenterRoutes);
 app.use("/api/service-engineer", serviceEngineerRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the virtual callbell Call Backend");
+  res.send("Welcome to the Aceit Technologies (P)ltd Backend API");
 });
 
 // Start HTTP server with retry on EADDRINUSE (try next ports)
