@@ -11,7 +11,6 @@ app.use(
     origin: [
       process.env.FRONTEND_URL,
       process.env.FRONTEND_URL_2,
-      "https://callball-hotel.vercel.app",
     ],
     credentials: true,
   }),

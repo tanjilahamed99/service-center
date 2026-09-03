@@ -89,7 +89,7 @@ export default function LoginPage() {
             </svg>
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">
-            ServicePoint Zero Hero
+            ServicePoint
           </span>
         </div>
 
