@@ -42,7 +42,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.log(error);
-      const message = error.response?.data?.message || "Something went wrong";
+      const message = error?.response?.data?.message || "Something went wrong";
 
       toast.error(message);
       setIsLoading(false);

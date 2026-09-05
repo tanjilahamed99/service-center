@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://103.243.232.236:5011/api",
+  baseURL: "https://api-aceit.callbell.in/api",
 });
 
 const Navigate = (path) => {
