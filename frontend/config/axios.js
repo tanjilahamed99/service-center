@@ -25,8 +25,8 @@ API.interceptors.response.use(
     const status = error?.response?.status;
     console.log("error in interceptor", status, error);
     if (status == 401 || status == 403) {
-      // window.localStorage.clear();
-      // Navigate("/");
+      window.localStorage.clear();
+      Navigate("/");
     }
     return Promise.reject(error);
   },
