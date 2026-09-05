@@ -11,7 +11,7 @@ const Navigate = (path) => {
 API.interceptors.request.use((config) => {
   const data = localStorage.getItem("service-center-auth");
   const auth = JSON.parse(data);
-  const token = auth.state.token;
+  const token = auth?.state?.token;
 
   if (token) config.headers["Authorization"] = `Bearer ${token}`;
   return config;
