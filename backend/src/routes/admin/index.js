@@ -10,4 +10,7 @@ router.patch("/company/:id", companyController.updateCompany);
 router.delete("/company/:id", companyController.deleteCompany);
 router.post("/company/login/:companyId", companyController.companyLogin);
 
+router.post("/createUser", companyController.createUser);
+router.get("/users", companyController.getUsers);
+
 module.exports = router;

@@ -28,8 +28,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["admin", "company", "service-center", 'service-engineer'],
-    default: "service-engineer",
+    enum: ["admin", "user"],
+    default: "user",
   },
   address: {
     type: String,
@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now },
   referenceBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  busy: { type: Boolean, default: false },
   department: {
     type: String,
     enum: [
@@ -52,6 +51,11 @@ const userSchema = new mongoose.Schema({
       "duty-manager",
       "staff",
     ],
+  },
+  status: {
+    type: String,
+    enum: ["active", "inactive"],
+    default: "active",
   },
 });
 

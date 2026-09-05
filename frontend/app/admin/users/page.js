@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -19,54 +19,9 @@ import {
   HardHat,
   ChevronDown,
 } from "lucide-react";
-
-const INITIAL_USERS = [
-  {
-    id: 1,
-    name: "John Admin",
-    email: "john@servicepoint.com",
-    phone: "+91 9876543210",
-    role: "admin",
-    status: "Active",
-    createdAt: "20 Aug 2026",
-  },
-  {
-    id: 2,
-    name: "ABC Technologies",
-    email: "abc@servicepoint.com",
-    phone: "+91 9876543211",
-    role: "company",
-    status: "Active",
-    createdAt: "18 Aug 2026",
-  },
-  {
-    id: 3,
-    name: "Delhi Service Center",
-    email: "delhi@servicepoint.com",
-    phone: "+91 9876543212",
-    role: "service-center",
-    status: "Active",
-    createdAt: "15 Aug 2026",
-  },
-  {
-    id: 4,
-    name: "Rahul Kumar",
-    email: "rahul@servicepoint.com",
-    phone: "+91 9876543213",
-    role: "service-engineer",
-    status: "Inactive",
-    createdAt: "12 Aug 2026",
-  },
-  {
-    id: 5,
-    name: "Tech Solutions",
-    email: "tech@servicepoint.com",
-    phone: "+91 9876543214",
-    role: "company",
-    status: "Active",
-    createdAt: "10 Aug 2026",
-  },
-];
+import { createUsers, getUsers } from "@/actions/admin";
+import { toast } from "sonner";
+import { formatDate } from "@/components/FormatDate";
 
 const ROLE_CONFIG = {
   admin: {
@@ -84,7 +39,7 @@ const EMPTY_FORM = {
 };
 
 export default function UsersPage() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -179,7 +134,7 @@ export default function UsersPage() {
   // CREATE / UPDATE
   // =====================================================
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (editingUser) {
@@ -196,22 +151,25 @@ export default function UsersPage() {
             : user,
         ),
       );
+
+
+      // const {data} = await updateUserData({id})
+
+
+
+
     } else {
       const newUser = {
-        id: Date.now(),
         name: form.name,
         email: form.email,
         phone: form.phone,
-        role: form.role,
-        status: "Active",
-        createdAt: new Date().toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
+        password: form.password,
       };
-
-      setUsers((prev) => [newUser, ...prev]);
+      const { data } = await createUsers(newUser);
+      if (data.success) {
+        setUsers((prev) => [data.data, ...prev]);
+        toast.success("Login successful");
+      }
     }
 
     closeModal();
@@ -257,6 +215,17 @@ export default function UsersPage() {
 
     return <Icon size={15} strokeWidth={1.8} />;
   };
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await getUsers();
+      if (data.success) {
+        setUsers(data.data);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -353,11 +322,11 @@ export default function UsersPage() {
                     label: "All Status",
                   },
                   {
-                    value: "Active",
+                    value: "active",
                     label: "Active",
                   },
                   {
-                    value: "Inactive",
+                    value: "inactive",
                     label: "Inactive",
                   },
                 ]}
@@ -404,11 +373,11 @@ export default function UsersPage() {
                     label: "All Status",
                   },
                   {
-                    value: "Active",
+                    value: "active",
                     label: "Active",
                   },
                   {
-                    value: "Inactive",
+                    value: "inactive",
                     label: "Inactive",
                   },
                 ]}
@@ -453,9 +422,9 @@ export default function UsersPage() {
 
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+                filteredUsers.map((user, idx) => (
                   <tr
-                    key={user.id}
+                    key={idx}
                     className="group transition hover:bg-slate-50/80">
                     {/* User */}
                     <td className="px-5 py-4">
@@ -501,26 +470,26 @@ export default function UsersPage() {
                     <td className="px-5 py-4">
                       <span
                         className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          user.status === "Active"
+                          user.status === "active"
                             ? "bg-emerald-50 text-emerald-600"
                             : "bg-slate-100 text-slate-500"
                         }`}>
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
-                            user.status === "Active"
+                            user.status === "active"
                               ? "bg-emerald-500"
                               : "bg-slate-400"
                           }`}
                         />
 
-                        {user.status}
+                        {user.status === "active" ? "Active" : "Inactive"}
                       </span>
                     </td>
 
                     {/* Created */}
                     <td className="px-5 py-4">
                       <span className="whitespace-nowrap text-sm text-slate-500">
-                        {user.createdAt}
+                        {formatDate(user.createdAt)}
                       </span>
                     </td>
 
@@ -537,17 +506,17 @@ export default function UsersPage() {
                         {/* Enable / Disable */}
                         <ActionButton
                           title={
-                            user.status === "Active"
+                            user.status === "active"
                               ? "Disable user"
                               : "Enable user"
                           }
                           onClick={() => handleToggleStatus(user)}
                           className={
-                            user.status === "Active"
+                            user.status === "active"
                               ? "hover:text-amber-600"
                               : "hover:text-emerald-600"
                           }>
-                          {user.status === "Active" ? (
+                          {user.status === "active" ? (
                             <UserX size={16} />
                           ) : (
                             <UserCheck size={16} />

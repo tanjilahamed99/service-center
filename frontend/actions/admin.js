@@ -18,3 +18,11 @@ export const deleteCompany = (id) => {
 export const loginCompany = (id) => {
   return API.post(`/admin/company/login/${id}`);
 };
+
+export const createUsers = (data) => {
+  return API.post(`/admin/createUser`, data);
+};
+
+export const getUsers = () => {
+  return API.get(`/admin/users`);
+};

@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const Company = require("../../../models/Company");
 const jwt = require("jsonwebtoken");
+const User = require("../../../models/User");
 
 // POST /api/companies
 exports.createCompany = async (req, res) => {
@@ -259,6 +260,62 @@ exports.companyLogin = async (req, res, next) => {
     // use appropriate status code to send data
   } catch (error) {
     console.log(error.message);
+    next(error);
+  }
+};
+
+exports.createUser = async (req, res, next) => {
+  const { name, email, password, phone } = req.body || {};
+
+  // Basic validation
+  if (!name || !email || !password) {
+    return res
+      .status(400)
+      .send({ message: "Please provide all required fields" });
+  }
+
+  try {
+    // Check for existing email with the same rol
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(201).send({
+        success: false,
+        message: `user of  ${name} already registered!`,
+      });
+    }
+
+    const newUser = new User({
+      name,
+      email,
+      password,
+      phone,
+      role: "admin",
+    });
+    const savedUser = await newUser.save();
+
+    res.status(201).send({
+      success: true,
+      message: "User registered successfully!",
+      data: savedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+exports.getUsers = async (req, res, next) => {
+  try {
+    // Check for existing email with the same rol
+    const users = await User.find({});
+    res.status(201).send({
+      success: true,
+      message: "Users!",
+      data: users,
+    });
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };

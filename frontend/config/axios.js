@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "https://api-aceit.callbell.in/api",
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000",
 });
 
 const Navigate = (path) => {
