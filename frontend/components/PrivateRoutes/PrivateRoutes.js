@@ -10,10 +10,14 @@ const PrivateRoutes = ({ children, allowedRoles = [] }) => {
 
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Wait until Zustand has actually finished reading localStorage
+    if (!hasHydrated) return;
+
     // No authentication
     if (!token || !user) {
       router.replace("/");
@@ -49,10 +53,10 @@ const PrivateRoutes = ({ children, allowedRoles = [] }) => {
     }
 
     setChecking(false);
-  }, [token, user, allowedRoles, router, pathname]);
+  }, [token, user, hasHydrated, allowedRoles, router, pathname]);
 
-  // Don't show protected page while checking authentication
-  if (checking) {
+  // Don't show protected page while hydrating or checking authentication
+  if (!hasHydrated || checking) {
     return null;
   }
 

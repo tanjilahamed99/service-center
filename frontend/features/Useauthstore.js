@@ -6,6 +6,7 @@ export const useAuthStore = create(
     (set, get) => ({
       token: null,
       user: null,
+      hasHydrated: false,
 
       setAuth({ token, user }) {
         set({ token, user });
@@ -18,10 +19,17 @@ export const useAuthStore = create(
       isAuthenticated() {
         return !!get().token;
       },
+
+      setHasHydrated(state) {
+        set({ hasHydrated: state });
+      },
     }),
     {
       name: "service-center-auth",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );
@@ -30,3 +38,4 @@ export const useAuthStore = create(
 export const selectToken = (s) => s.token;
 export const selectUser = (s) => s.user;
 export const selectIsAuthenticated = (s) => !!s.token;
+export const selectHasHydrated = (s) => s.hasHydrated;
