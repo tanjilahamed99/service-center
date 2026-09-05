@@ -22,7 +22,7 @@ API.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const status = error.response.status;
+    const status = error?.response?.status;
     console.log("error in interceptor", status, error);
     if (status == 401 || status == 403) {
       // window.localStorage.clear();
