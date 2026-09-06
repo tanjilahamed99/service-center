@@ -1,16 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const companyController = require("../../controller/v1/admin/admin");
-// const { verifyToken, requireRole } = require("../middleware/auth"); // TODO: protect these behind Super Admin auth
+const { adminCheck } = require("../../middlewares/validatoin");
 
-router.post("/company", companyController.createCompany);
-router.get("/company", companyController.getAllCompanies);
-router.get("/company/:id", companyController.getCompanyById);
-router.patch("/company/:id", companyController.updateCompany);
-router.delete("/company/:id", companyController.deleteCompany);
-router.post("/company/login/:companyId", companyController.companyLogin);
+router.post("/company", adminCheck, companyController.createCompany);
+router.get("/company", adminCheck, companyController.getAllCompanies);
+router.get("/company/:id", adminCheck, companyController.getCompanyById);
+router.patch("/company/:id", adminCheck, companyController.updateCompany);
+router.delete("/company/:id", adminCheck, companyController.deleteCompany);
+router.post(
+  "/company/login/:companyId",
+  adminCheck,
+  companyController.companyLogin,
+);
 
-router.post("/createUser", companyController.createUser);
-router.get("/users", companyController.getUsers);
+router.post("/createUser", adminCheck, companyController.createUser);
+router.get("/users", adminCheck, companyController.getUsers);
 
 module.exports = router;
