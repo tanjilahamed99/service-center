@@ -32,7 +32,6 @@ export default function ServiceEngineerJobsListPage({
   const [logsTarget, setLogsTarget] = useState(null); // single job (view)
   const [statusTarget, setStatusTarget] = useState(null); // single job (update status)
 
-  console.log(jobs);
 
   const fetchJobs = useCallback(
     async (extraParams = {}) => {
