@@ -4,7 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { JOB_STATUS } from "../job/Constants";
 import ViewLogsModal from "../job/Viewlogsmodal";
 import UpdateJobStatusModal from "./UpdateJobStatusModal";
-import { serviceEngineerJobs, serviceEngineerHoldJob, serviceEngineerCloseJob } from "@/actions/service-engineer";
+import {
+  serviceEngineerJobs,
+  serviceEngineerHoldJob,
+  serviceEngineerCloseJob,
+} from "@/actions/service-engineer";
 import ServiceEngineerJobsTable from "./ServiceEngineerJobTable";
 
 const VARIANT_STATUS_FILTER = {
@@ -16,7 +20,11 @@ const VARIANT_STATUS_FILTER = {
   cancelled: JOB_STATUS.CANCELLED,
 };
 
-export default function ServiceEngineerJobsListPage({ variant, title, subtitle }) {
+export default function ServiceEngineerJobsListPage({
+  variant,
+  title,
+  subtitle,
+}) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,13 +32,18 @@ export default function ServiceEngineerJobsListPage({ variant, title, subtitle }
   const [logsTarget, setLogsTarget] = useState(null); // single job (view)
   const [statusTarget, setStatusTarget] = useState(null); // single job (update status)
 
+  console.log(jobs);
+
   const fetchJobs = useCallback(
     async (extraParams = {}) => {
       setLoading(true);
       setError("");
       try {
         const status = VARIANT_STATUS_FILTER[variant];
-        const res = await serviceEngineerJobs({ ...(status ? { status } : {}), ...extraParams });
+        const res = await serviceEngineerJobs({
+          ...(status ? { status } : {}),
+          ...extraParams,
+        });
         setJobs(res.data?.data ?? []);
       } catch (err) {
         console.error("Failed to load jobs", err);
@@ -60,7 +73,9 @@ export default function ServiceEngineerJobsListPage({ variant, title, subtitle }
 
   return (
     <>
-      {error && <p className="mb-4 text-sm font-medium text-red-500">{error}</p>}
+      {error && (
+        <p className="mb-4 text-sm font-medium text-red-500">{error}</p>
+      )}
 
       <ServiceEngineerJobsTable
         title={title}
@@ -70,7 +85,11 @@ export default function ServiceEngineerJobsListPage({ variant, title, subtitle }
         onUpdateStatus={(job) => setStatusTarget(job)}
       />
 
-      <ViewLogsModal open={!!logsTarget} job={logsTarget} onClose={() => setLogsTarget(null)} />
+      <ViewLogsModal
+        open={!!logsTarget}
+        job={logsTarget}
+        onClose={() => setLogsTarget(null)}
+      />
 
       <UpdateJobStatusModal
         open={!!statusTarget}

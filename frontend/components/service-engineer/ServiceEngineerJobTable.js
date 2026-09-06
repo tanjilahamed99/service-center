@@ -125,7 +125,7 @@ export default function ServiceEngineerJobsTable({ title, subtitle, jobs, onView
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative w-full sm:min-w-[220px] sm:flex-1">
+        <div className="relative w-full sm:min-w-55 sm:flex-1">
           <Icon
             d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"

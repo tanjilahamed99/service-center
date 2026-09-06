@@ -116,7 +116,7 @@ const JobSchema = new mongoose.Schema(
     // Hold
     holdSubStatus: { type: String, enum: HOLD_SUB_STATUS },
     holdReason: { type: String, trim: true },
-    // holdPhotos: [{ type: String }], // min 2, max 5 — enforce in controller/validation layer
+    holdPhotos: [{ type: String }],
     holdRemarks: { type: String, trim: true },
 
     // Closure (Service Engineer "Closed" flow)
@@ -136,7 +136,7 @@ const JobSchema = new mongoose.Schema(
     cancelledAt: { type: Date },
 
     // Misc
-    // uploadFile: { type: String }, // path/URL of file attached at creation
+    uploadFile: { type: String }, // path/URL of file attached at creation
     logs: [LogEntrySchema],
   },
   { timestamps: true },

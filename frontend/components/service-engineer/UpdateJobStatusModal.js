@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "../job/Modal";
+import UploadImage from "../UploadImage";
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
@@ -38,13 +39,13 @@ const EMPTY = {
   // hold
   holdSubStatus: "",
   holdReason: "",
-  holdPhotos: [],
+  holdPhotos: [], // array of ImgBB URLs
   holdRemarks: "",
   // completed
   actualIssueFound: "",
   correctiveActionTaken: "",
-  closurePhotos: [],
-  customerSignature: "",
+  closurePhotos: [], // array of ImgBB URLs
+  customerSignature: "", // single ImgBB URL
   otp: "",
 };
 
@@ -69,16 +70,6 @@ export default function UpdateJobStatusModal({
     onClose?.();
   }
 
-  function handleFiles(field, fileList, min, max) {
-    const files = Array.from(fileList ?? []);
-    if (files.length > max) {
-      setError(`Attach at most ${max} photos.`);
-      return;
-    }
-    setError("");
-    update(field, files);
-  }
-
   async function handleSubmit() {
     setError("");
 
@@ -90,15 +81,10 @@ export default function UpdateJobStatusModal({
       }
       setSubmitting(true);
       try {
-        console.log(job);
-
-        // TODO: upload form.holdPhotos to storage first and pass back the
-        // resulting URLs — holdPhotos on the backend expects String[] (URLs),
-        // not raw File objects.
         await onHold(job._id, {
           holdSubStatus: form.holdSubStatus,
           holdReason: form.holdReason,
-          holdPhotos: form.holdPhotos,
+          holdPhotos: form.holdPhotos, // already URLs
           holdRemarks: form.holdRemarks,
         });
         handleClose();
@@ -119,13 +105,11 @@ export default function UpdateJobStatusModal({
       if (!form.otp) return setError("Enter the OTP sent to the customer.");
       setSubmitting(true);
       try {
-        // TODO: same as above — upload form.closurePhotos and customerSignature
-        // first, then send back their URLs.
         await onComplete(job._id, {
           actualIssueFound: form.actualIssueFound,
           correctiveActionTaken: form.correctiveActionTaken,
-          closurePhotos: form.closurePhotos,
-          customerSignature: form.customerSignature,
+          closurePhotos: form.closurePhotos, // already URLs
+          customerSignature: form.customerSignature, // already URL
           otp: form.otp,
         });
         handleClose();
@@ -202,25 +186,15 @@ export default function UpdateJobStatusModal({
                 className={inputClass}
               />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-navy-900">
-                Photos (2–5 required)
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) =>
-                  handleFiles("holdPhotos", e.target.files, 2, 5)
-                }
-                className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-electric-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-electric-500 hover:file:bg-electric-500/15"
-              />
-              {form.holdPhotos.length > 0 && (
-                <p className="mt-1 text-xs text-slate-400">
-                  {form.holdPhotos.length} photo(s) selected
-                </p>
-              )}
-            </div>
+
+            <UploadImage
+              label="Photos (2–5 required)"
+              multiple
+              min={2}
+              max={5}
+              value={form.holdPhotos}
+              onChange={(urls) => update("holdPhotos", urls)}
+            />
           </>
         )}
 
@@ -262,33 +236,22 @@ export default function UpdateJobStatusModal({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-navy-900">
-                Closure Photos
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) =>
-                  handleFiles("closurePhotos", e.target.files, 0, 8)
-                }
-                className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-electric-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-electric-500 hover:file:bg-electric-500/15"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-navy-900">
-                Customer Signature
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  update("customerSignature", e.target.files?.[0] ?? "")
-                }
-                className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-electric-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-electric-500 hover:file:bg-electric-500/15"
-              />
-            </div>
+
+            <UploadImage
+              label="Closure Photos"
+              multiple
+              min={0}
+              max={8}
+              value={form.closurePhotos}
+              onChange={(urls) => update("closurePhotos", urls)}
+            />
+
+            <UploadImage
+              label="Customer Signature"
+              value={form.customerSignature}
+              onChange={(url) => update("customerSignature", url)}
+            />
+
             <div>
               <label className="mb-1.5 block text-sm font-medium text-navy-900">
                 OTP (from customer)

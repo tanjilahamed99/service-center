@@ -143,8 +143,6 @@ exports.serviceEngineerHoldJob = async (req, res) => {
         .json({ success: false, message: "Attach between 2 and 5 photos" });
     }
 
-    console.log(engineer);
-
     // Ownership check: this engineer must actually be the one assigned to the job.
     const existing = await Job.findOne({
       _id: req.params.id,
