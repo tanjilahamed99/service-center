@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
             </svg>
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">
-            ServicePoint
+            Aceit Technologies (P)ltd
           </span>
         </div>
 
@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
 
         {/* Footer note */}
         <p className="relative mt-10 hidden text-xs text-slate-500 lg:block">
-          &copy; {new Date().getFullYear()} ServicePoint. All systems operational.
+          &copy; {new Date().getFullYear()} Aceit Technologies (P)ltd. All systems operational.
         </p>
       </div>
 

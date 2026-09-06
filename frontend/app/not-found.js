@@ -42,7 +42,7 @@ export default function NotFound() {
             </svg>
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">
-            ServicePoint
+            Aceit Technologies (P)ltd
           </span>
         </div>
 

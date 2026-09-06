@@ -52,7 +52,9 @@ function SidebarContent({ pathname, onNavigate }) {
           </svg>
         </span>
         <div>
-          <p className="text-sm font-semibold text-white">ServicePoint</p>
+          <p className="text-sm font-semibold text-white">
+            Aceit Technologies (P)ltd
+          </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
             Service Center
           </p>
@@ -100,6 +102,7 @@ function SidebarContent({ pathname, onNavigate }) {
 export default function ServiceCenterLayout({ children }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
 
   const currentLabel =
     NAV_ITEMS.find((item) => isActive(item.href, pathname))?.label ??
@@ -160,7 +163,7 @@ export default function ServiceCenterLayout({ children }) {
                   SC
                 </span>
                 <span className="hidden text-sm font-medium text-navy-900 sm:block">
-                  Vertex Service Point
+                  {user?.name ?? "Service Engineer"}
                 </span>
               </div>
             </div>
