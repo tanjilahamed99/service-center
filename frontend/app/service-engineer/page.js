@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ListChecks, Wrench, PauseCircle, CheckCircle2 } from "lucide-react";
-import { serviceEngineerJobs } from "@/actions/service-engineer"; // adjust to your actual api module path
+import {
+  ListChecks,
+  Wrench,
+  PauseCircle,
+  CheckCircle2,
+  RotateCcw,
+} from "lucide-react";
+import { getDashboardStats } from "@/actions/service-engineer";
 
 const TONE_STYLES = {
   emerald: "bg-emerald-50 text-emerald-600 ring-emerald-200",
@@ -11,19 +17,6 @@ const TONE_STYLES = {
   navy: "bg-navy-900/5 text-navy-900 ring-navy-900/10",
   amber: "bg-amber-50 text-amber-500 ring-amber-200",
 };
-
-// Adjust these if your job documents use different status strings.
-const STATUS = {
-  PENDING: "Pending",
-  HOLD: "Hold",
-  COMPLETED: "Completed",
-};
-
-function daysSince(dateLike) {
-  if (!dateLike) return 0;
-  const diffMs = Date.now() - new Date(dateLike).getTime();
-  return diffMs / (1000 * 60 * 60 * 24);
-}
 
 function StatCard({ label, value, icon: Icon, tone }) {
   return (
@@ -36,6 +29,16 @@ function StatCard({ label, value, icon: Icon, tone }) {
         {value}
       </p>
       <p className="mt-1 text-sm text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function StatCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-5">
+      <div className="h-10 w-10 rounded-lg bg-slate-100" />
+      <div className="mt-4 h-7 w-16 rounded bg-slate-100" />
+      <div className="mt-2 h-4 w-28 rounded bg-slate-100" />
     </div>
   );
 }
@@ -53,6 +56,15 @@ function AgingCard({ label, value, tone }) {
   );
 }
 
+function AgingCardSkeleton() {
+  return (
+    <div className="flex animate-pulse items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4">
+      <div className="h-4 w-28 rounded bg-slate-100" />
+      <div className="h-5 w-8 rounded bg-slate-100" />
+    </div>
+  );
+}
+
 function SectionHeading({ title, subtitle }) {
   return (
     <div className="mb-4">
@@ -64,73 +76,68 @@ function SectionHeading({ title, subtitle }) {
   );
 }
 
-function StatSkeleton({ count, className }) {
-  return (
-    <div className={className}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-[92px] animate-pulse rounded-xl border border-slate-200 bg-slate-100"
-        />
-      ))}
-    </div>
-  );
-}
-
-export default function ServiceEngineerDashboardPage() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function ServiceCenterDashboardPage() {
+  const [stats, setStats] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
+  const fetchStats = useCallback(async () => {
+    setIsLoading(true);
     setError("");
     try {
-      const res = await serviceEngineerJobs({});
-      setJobs(res.data?.data ?? []);
+      const { data } = await getDashboardStats();
+      console.log(data);
+      setStats(data.data);
     } catch (err) {
-      console.error("Failed to load jobs", err);
-      setError("Failed to load dashboard data.");
+      setError(
+        err.response?.data?.message ||
+          "Couldn't load dashboard stats. Please try again.",
+      );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    fetchStats();
+  }, [fetchStats]);
 
-  const jobStats = useMemo(() => {
-    const total = jobs.length;
-    const pending = jobs.filter((j) => j.status === STATUS.PENDING).length;
-    const onHold = jobs.filter((j) => j.status === STATUS.HOLD).length;
-    const completed = jobs.filter((j) => j.status === STATUS.COMPLETED).length;
+  const agingStats = stats
+    ? [
+        { label: "Pending > 1 Day", value: stats.pending1Day, tone: "amber" },
+        { label: "Pending > 3 Days", value: stats.pending3Days, tone: "amber" },
+        { label: "Pending > 7 Days", value: stats.pending7Days, tone: "red" },
+      ]
+    : [];
 
-    return [
-      { label: "Total Jobs", value: total, icon: ListChecks, tone: "navy" },
-      { label: "Pending Jobs", value: pending, icon: Wrench, tone: "amber" },
-      { label: "Jobs on Hold", value: onHold, icon: PauseCircle, tone: "red" },
-      {
-        label: "Completed Jobs",
-        value: completed,
-        icon: CheckCircle2,
-        tone: "emerald",
-      },
-    ];
-  }, [jobs]);
-
-  const agingStats = useMemo(() => {
-    const pendingJobs = jobs.filter((j) => j.status === STATUS.PENDING);
-    const over1 = pendingJobs.filter((j) => daysSince(j.createdAt) > 1).length;
-    const over3 = pendingJobs.filter((j) => daysSince(j.createdAt) > 3).length;
-    const over7 = pendingJobs.filter((j) => daysSince(j.createdAt) > 7).length;
-
-    return [
-      { label: "Pending > 1 Day", value: over1, tone: "amber" },
-      { label: "Pending > 3 Days", value: over3, tone: "amber" },
-      { label: "Pending > 7 Days", value: over7, tone: "red" },
-    ];
-  }, [jobs]);
+  const jobStats = stats
+    ? [
+        {
+          label: "Total Jobs",
+          value: stats.totalJobs,
+          icon: ListChecks,
+          tone: "navy",
+        },
+        {
+          label: "Pending at Service Center",
+          value: stats.pendingAtServiceCenter,
+          icon: Wrench,
+          tone: "amber",
+        },
+        {
+          label: "Jobs on Hold",
+          value: stats.jobsOnHold,
+          icon: PauseCircle,
+          tone: "red",
+        },
+        {
+          label: "Completed Jobs",
+          value: stats.completedJobs,
+          icon: CheckCircle2,
+          tone: "emerald",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-8">
@@ -144,17 +151,25 @@ export default function ServiceEngineerDashboardPage() {
             Welcome back
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Here&apos;s what&apos;s on your plate today.
+            Here&apos;s what&apos;s waiting on your team today.
           </p>
         </div>
+        <Link
+          href="/service-center/jobs"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-electric-500 to-electric-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-electric-500/30 transition hover:brightness-110">
+          View Jobs
+        </Link>
       </div>
 
+      {/* Error state */}
       {error && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          <span>{error}</span>
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-sm text-red-600">{error}</p>
           <button
-            onClick={fetchJobs}
-            className="font-semibold underline underline-offset-2">
+            type="button"
+            onClick={fetchStats}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700">
+            <RotateCcw className="h-3.5 w-3.5" />
             Retry
           </button>
         </div>
@@ -166,35 +181,27 @@ export default function ServiceEngineerDashboardPage() {
           title="Aging"
           subtitle="Jobs still pending, by how long they've waited"
         />
-        {loading ? (
-          <StatSkeleton
-            count={3}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {agingStats.map((stat) => (
-              <AgingCard key={stat.label} {...stat} />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <AgingCardSkeleton key={i} />
+              ))
+            : agingStats.map((stat) => (
+                <AgingCard key={stat.label} {...stat} />
+              ))}
+        </div>
       </section>
 
       {/* Job status */}
       <section>
-        <SectionHeading title="Jobs" subtitle="Jobs associated with you" />
-        {loading ? (
-          <StatSkeleton
-            count={4}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {jobStats.map((stat) => (
-              <StatCard key={stat.label} {...stat} />
-            ))}
-          </div>
-        )}
+        <SectionHeading title="Jobs" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+              ))
+            : jobStats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+        </div>
       </section>
     </div>
   );

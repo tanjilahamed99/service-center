@@ -7,6 +7,7 @@ const {
   serviceEngineerHoldJob,
   serviceEngineerCloseJob,
   serviceEngineerGetJobLogs,
+  getDashboardStats,
 } = require("../../controller/v1/service-engineer/serviceEngineer");
 const { serviceEngineerCheck } = require("../../middlewares/validatoin");
 
@@ -21,5 +22,8 @@ router.get("/getJobLogs/:id", serviceEngineerCheck, serviceEngineerGetJobLogs);
 router.get("/getProfile", serviceEngineerCheck, getMyProfile);
 router.put("/updateProfile", serviceEngineerCheck, updateMyProfile);
 router.put("/changePassword", serviceEngineerCheck, changeMyPassword);
+
+// Dashboard
+router.get("/dashboard-stats", serviceEngineerCheck, getDashboardStats);
 
 module.exports = router;

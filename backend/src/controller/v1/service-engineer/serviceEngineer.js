@@ -4,6 +4,14 @@ const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const bcrypt = require("bcrypt");
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const OPEN_STATUSES = [
+  "Registered",
+  "Service Center Assigned",
+  "Service Engineer Assigned",
+  "Hold",
+];
+
 exports.serviceEngineerJobs = async (req, res) => {
   try {
     const serviceEngineer = req.user._id;
@@ -431,6 +439,86 @@ exports.changeMyPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to change password",
+      error: error.message,
+    });
+  }
+};
+
+// GET /service-center/dashboard-stats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const serviceEngineer = req.user._id;
+
+    const serviceCenter =
+      await ServiceEngineer.findById(serviceEngineer).select("serviceCenter");
+
+    if (!serviceCenter) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Service Engineer not found or not associated with a service center",
+      });
+    }
+    const now = new Date();
+
+    const [
+      pending1Day,
+      pending3Days,
+      pending7Days,
+      totalJobs,
+      pendingAtServiceCenter,
+      jobsOnHold,
+      completedJobs,
+    ] = await Promise.all([
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: new Date(now - 1 * DAY_MS) },
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: new Date(now - 3 * DAY_MS) },
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: new Date(now - 7 * DAY_MS) },
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: "Service Center Assigned",
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: "Hold",
+      }),
+      Job.countDocuments({
+        assignedServiceCenter: serviceCenter.serviceCenter,
+        status: "Completed",
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pending1Day,
+        pending3Days,
+        pending7Days,
+        totalJobs,
+        pendingAtServiceCenter,
+        jobsOnHold,
+        completedJobs,
+      },
+    });
+  } catch (error) {
+    console.error("getDashboardStats error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard stats",
       error: error.message,
     });
   }

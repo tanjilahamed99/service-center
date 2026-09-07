@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: {
     default: "Aceit Technologies (P) Ltd.",
-    template: "%s | ServicePoint",
+    template: "%s | Aceit Technologies",
   },
   description:
     "Service CRM by Aceit Technologies (P) Ltd. — manage complaints, service centers, and engineers from one platform.",
-  applicationName: "ServicePoint",
+  applicationName: "Aceit Technologies",
   authors: [{ name: "Aceit Technologies (P) Ltd." }],
 };
 

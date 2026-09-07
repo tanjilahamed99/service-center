@@ -24,3 +24,6 @@ export const updateProfile = (data) => {
 export const changePassword = (data) => {
   return API.put(`/service-engineer/changePassword`, data);
 };
+
+export const getDashboardStats = () =>
+  API.get(`/service-engineer/dashboard-stats`);
