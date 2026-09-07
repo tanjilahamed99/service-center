@@ -245,9 +245,9 @@ exports.companyLogin = async (req, res, next) => {
 
     const payload = {
       id: company._id,
-      userName: company.username,
-      companyName: company.companyName,
-      gstNumber: company.gstNumber,
+      name: company.companyName,
+      role: "company",
+      username: company.username,
     };
 
     jwt.sign(
