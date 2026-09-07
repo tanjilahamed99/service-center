@@ -17,4 +17,8 @@ router.post(
 router.post("/createUser", adminCheck, companyController.createUser);
 router.get("/users", adminCheck, companyController.getUsers);
 
+router.get("/getProfile", adminCheck, companyController.getMyProfile);
+router.put("/updateProfile", adminCheck, companyController.updateMyProfile);
+router.put("/changePassword", adminCheck, companyController.changeMyPassword);
+
 module.exports = router;

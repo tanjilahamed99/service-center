@@ -319,3 +319,99 @@ exports.getUsers = async (req, res, next) => {
     next(error);
   }
 };
+
+// GET /service-center/getProfile
+exports.getMyProfile = async (req, res) => {
+  try {
+    const profile = await User.findById(req.user._id).select("-password");
+    if (!profile) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Profile not found" });
+    }
+    return res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    console.error("getMyProfile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateMyProfile = async (req, res) => {
+  try {
+    const { name, address, phone } = req.body;
+
+    const updateFields = {
+      ...(name && { name }),
+      ...(address !== undefined && { address }),
+      ...(phone !== undefined && { phone }),
+    };
+
+    const profile = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateFields },
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Profile updated", data: profile });
+  } catch (error) {
+    console.error("updateMyProfile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+      error: error.message,
+    });
+  }
+};
+
+// PUT /service-center/changePassword
+// body: { currentPassword, newPassword }
+exports.changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "currentPassword and newPassword are required",
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "newPassword must be at least 6 characters",
+      });
+    }
+
+    const admin = await User.findById(req.user._id).select("+password");
+    if (!admin) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Profile not found" });
+    }
+
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Current password is incorrect" });
+    }
+
+    admin.password = newPassword; // pre-save hook hashes it
+    await admin.save();
+
+    return res.status(200).json({ success: true, message: "Password updated" });
+  } catch (error) {
+    console.error("changeMyPassword error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update password",
+      error: error.message,
+    });
+  }
+};

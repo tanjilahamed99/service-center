@@ -41,17 +41,6 @@ const userSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now },
   referenceBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  department: {
-    type: String,
-    enum: [
-      "reception",
-      "room-service",
-      "restaurant",
-      "manager",
-      "duty-manager",
-      "staff",
-    ],
-  },
   status: {
     type: String,
     enum: ["active", "inactive"],
@@ -73,6 +62,11 @@ userSchema.pre("save", async function (next) {
   }
   next();
 });
+
+// Instance method to verify a login attempt
+userSchema.methods.comparePassword = function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 const User = mongoose.model("User", userSchema);
 

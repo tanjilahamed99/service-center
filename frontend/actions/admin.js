@@ -26,3 +26,11 @@ export const createUsers = (data) => {
 export const getUsers = () => {
   return API.get(`/admin/users`);
 };
+
+export const getProfile = () => API.get(`/admin/getProfile`);
+
+// data: { name, address, contactPerson, contactNumber, gstNumber }
+export const updateProfile = (data) => API.put(`/admin/updateProfile`, data);
+
+// data: { currentPassword, newPassword }
+export const changePassword = (data) => API.put(`/admin/changePassword`, data);
