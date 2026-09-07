@@ -34,3 +34,10 @@ export const updateProfile = (data) => API.put(`/admin/updateProfile`, data);
 
 // data: { currentPassword, newPassword }
 export const changePassword = (data) => API.put(`/admin/changePassword`, data);
+
+export const getAdminDashboardStats = () => API.get(`/admin/getDashboardStats`);
+export const getAdminServiceCenters = (params = {}) =>
+  API.get(`/admin/getServiceCenters`, { params });
+export const getAdminServiceEngineers = (params = {}) =>
+  API.get(`/admin/getServiceEngineers`, { params });
+export const getCompaniesLookup = () => API.get(`/admin/getCompaniesLookup`);

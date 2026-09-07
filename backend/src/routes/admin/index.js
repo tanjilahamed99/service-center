@@ -21,4 +21,25 @@ router.get("/getProfile", adminCheck, companyController.getMyProfile);
 router.put("/updateProfile", adminCheck, companyController.updateMyProfile);
 router.put("/changePassword", adminCheck, companyController.changeMyPassword);
 
+router.get(
+  "/getDashboardStats",
+  adminCheck,
+  companyController.getDashboardStats,
+);
+router.get(
+  "/getServiceCenters",
+  adminCheck,
+  companyController.getServiceCenters,
+);
+router.get(
+  "/getServiceEngineers",
+  adminCheck,
+  companyController.getServiceEngineers,
+);
+router.get(
+  "/getCompaniesLookup",
+  adminCheck,
+  companyController.getCompaniesLookup,
+);
+
 module.exports = router;

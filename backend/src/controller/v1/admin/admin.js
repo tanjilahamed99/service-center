@@ -2,6 +2,9 @@ const bcrypt = require("bcrypt");
 const Company = require("../../../models/Company");
 const jwt = require("jsonwebtoken");
 const User = require("../../../models/User");
+const ServiceEngineer = require("../../../models/ServiceEngineer");
+const ServiceCenter = require("../../../models/ServiceCenter");
+const Job = require("../../../models/Job");
 
 // POST /api/companies
 exports.createCompany = async (req, res) => {
@@ -411,6 +414,135 @@ exports.changeMyPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update password",
+      error: error.message,
+    });
+  }
+};
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const OPEN_STATUSES = [
+      "Registered",
+      "Service Center Assigned",
+      "Service Engineer Assigned",
+      "Hold",
+    ];
+
+    const [
+      totalCompanies,
+      activeCompanies,
+      inactiveCompanies, // was suspendedCompanies / "Suspended"
+      totalComplaints,
+      pendingComplaints,
+      completedComplaints,
+    ] = await Promise.all([
+      Company.countDocuments({}),
+      Company.countDocuments({ status: "Active" }),
+      Company.countDocuments({ status: "Inactive" }),
+      Job.countDocuments({}),
+      Job.countDocuments({ status: { $in: OPEN_STATUSES } }),
+      Job.countDocuments({ status: "Completed" }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        companies: {
+          total: totalCompanies,
+          active: activeCompanies,
+          inactive: inactiveCompanies,
+        },
+        complaints: {
+          total: totalComplaints,
+          pending: pendingComplaints,
+          completed: completedComplaints,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getDashboardStats error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch dashboard stats",
+        error: error.message,
+      });
+  }
+};
+
+// GET /api/admin/getServiceCenters   query: { company, status, search }
+exports.getServiceCenters = async (req, res) => {
+  try {
+    const { company, status, search } = req.query;
+    const filter = {};
+    if (company) filter.company = company;
+    if (status) filter.status = status;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const serviceCenters = await ServiceCenter.find(filter)
+      .select("-password")
+      .populate("company", "companyName")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: serviceCenters });
+  } catch (error) {
+    console.error("getServiceCenters error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch service centers",
+      error: error.message,
+    });
+  }
+};
+
+// GET /api/admin/getServiceEngineers   query: { company, serviceCenter, status, search }
+exports.getServiceEngineers = async (req, res) => {
+  try {
+    const { company, serviceCenter, status, search } = req.query;
+    const filter = {};
+    if (company) filter.company = company;
+    if (serviceCenter) filter.serviceCenter = serviceCenter;
+    if (status) filter.status = status;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const engineers = await ServiceEngineer.find(filter)
+      .select("-password")
+      .populate("company", "companyName")
+      .populate("serviceCenter", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: engineers });
+  } catch (error) {
+    console.error("getServiceEngineers error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch service engineers",
+      error: error.message,
+    });
+  }
+};
+
+// GET /api/admin/getCompaniesLookup — for the filter dropdowns on both list pages
+exports.getCompaniesLookup = async (req, res) => {
+  try {
+    const companies = await Company.find({}).select("name").sort({ name: 1 });
+    return res.status(200).json({ success: true, data: companies });
+  } catch (error) {
+    console.error("getCompaniesLookup error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch companies",
       error: error.message,
     });
   }

@@ -46,11 +46,6 @@ const NAV_ITEMS = [
     icon: Users,
   },
   {
-    label: "Master Data",
-    href: "/admin/masters",
-    icon: Database,
-  },
-  {
     label: "Profile",
     href: "/admin/profile",
     icon: UserCircle,
@@ -95,7 +90,9 @@ function SidebarContent({ pathname, onNavigate }) {
         </span>
 
         <div>
-          <p className="text-sm font-semibold text-white">Aceit Technologies (P)ltd</p>
+          <p className="text-sm font-semibold text-white">
+            Aceit Technologies (P)ltd
+          </p>
 
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
             Super Admin
