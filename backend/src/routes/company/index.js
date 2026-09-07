@@ -27,6 +27,11 @@ const {
   createServiceEngineer,
   updateServiceEngineer,
   deleteServiceEngineer,
+
+  getMyProfile,
+  changeMyPassword,
+  updateMyProfile,
+  getDashboardStats,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -73,5 +78,11 @@ router.delete(
   companyCheck,
   deleteServiceEngineer,
 );
+
+router.get("/getProfile", companyCheck, getMyProfile);
+router.put("/updateProfile", companyCheck, updateMyProfile);
+router.put("/changePassword", companyCheck, changeMyPassword);
+
+router.get("/getDashboardStats", companyCheck, getDashboardStats);
 
 module.exports = router;

@@ -87,3 +87,14 @@ export const updateServiceEngineer = (id, data) =>
   API.put(`/company/updateServiceEngineer/${id}`, data);
 export const deleteServiceEngineer = (id) =>
   API.delete(`/company/deleteServiceEngineer/${id}`);
+
+export const getProfile = () => API.get(`/company/getProfile`);
+
+// data: { name, address, contactPerson, contactNumber, gstNumber }
+export const updateProfile = (data) => API.put(`/company/updateProfile`, data);
+
+// data: { currentPassword, newPassword }
+export const changePassword = (data) =>
+  API.put(`/company/changePassword`, data);
+
+export const getDashboardStats = () => API.get(`/company/getDashboardStats`);

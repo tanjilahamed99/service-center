@@ -3,6 +3,7 @@ const Customer = require("../../../models/Customer");
 const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const bcrypt = require("bcrypt");
+const Company = require("../../../models/Company");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -1003,6 +1004,203 @@ exports.deleteServiceEngineer = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to delete service engineer",
+      error: error.message,
+    });
+  }
+};
+
+// GET /service-center/getProfile
+exports.getMyProfile = async (req, res) => {
+  try {
+    const profile = await Company.findById(req.user._id).select("-password");
+    if (!profile) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Profile not found" });
+    }
+    return res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    console.error("getMyProfile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+      error: error.message,
+    });
+  }
+};
+
+// PUT /service-center/updateProfile
+// body: { name, address, contactPerson, contactNumber, gstNumber }
+// NOTE: matches the ServiceCenter schema's actual fields — not aadharNumber,
+// which belongs to ServiceEngineer.
+exports.updateMyProfile = async (req, res) => {
+  try {
+    const { name, address, contactPerson, contactNumber, gstNumber } = req.body;
+
+    const updateFields = {
+      ...(name && { name }),
+      ...(address !== undefined && { address }),
+      ...(contactPerson !== undefined && { contactPerson }),
+      ...(contactNumber !== undefined && { contactNumber }),
+      ...(gstNumber !== undefined && { gstNumber }),
+    };
+
+    const profile = await Company.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateFields },
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Profile updated", data: profile });
+  } catch (error) {
+    console.error("updateMyProfile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+      error: error.message,
+    });
+  }
+};
+
+// PUT /service-center/changePassword
+// body: { currentPassword, newPassword }
+exports.changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "currentPassword and newPassword are required",
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "newPassword must be at least 6 characters",
+      });
+    }
+
+    const company = await Company.findById(req.user._id).select("+password");
+    if (!company) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Profile not found" });
+    }
+
+    const isMatch = await company.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Current password is incorrect" });
+    }
+
+    company.password = newPassword; // pre-save hook hashes it
+    await company.save();
+
+    return res.status(200).json({ success: true, message: "Password updated" });
+  } catch (error) {
+    console.error("changeMyPassword error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update password",
+      error: error.message,
+    });
+  }
+};
+
+// GET /api/companies/getDashboardStats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const now = new Date();
+    const oneDayAgo = new Date(now - 1 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now - 3 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+    // "Pending" for aging purposes = not yet Completed or Cancelled.
+    const OPEN_STATUSES = [
+      "Registered",
+      "Service Center Assigned",
+      "Service Engineer Assigned",
+      "Hold",
+    ];
+
+    const [
+      totalJobs,
+      registeredJobs,
+      pendingAtServiceCenter,
+      pendingAtServiceEngineer,
+      jobsOnHold,
+      completedJobs,
+      agingOverOneDay,
+      agingOverThreeDays,
+      agingOverSevenDays,
+      totalServiceCenters,
+      activeServiceCenters,
+      totalServiceEngineers,
+      activeServiceEngineers,
+    ] = await Promise.all([
+      Job.countDocuments({ company }),
+      Job.countDocuments({ company, status: "Registered" }),
+      Job.countDocuments({ company, status: "Service Center Assigned" }),
+      Job.countDocuments({ company, status: "Service Engineer Assigned" }),
+      Job.countDocuments({ company, status: "Hold" }),
+      Job.countDocuments({ company, status: "Completed" }),
+      Job.countDocuments({
+        company,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: oneDayAgo },
+      }),
+      Job.countDocuments({
+        company,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: threeDaysAgo },
+      }),
+      Job.countDocuments({
+        company,
+        status: { $in: OPEN_STATUSES },
+        complaintDate: { $lte: sevenDaysAgo },
+      }),
+      ServiceCenter.countDocuments({ company }),
+      ServiceCenter.countDocuments({ company, status: "Active" }),
+      ServiceEngineer.countDocuments({ company }),
+      ServiceEngineer.countDocuments({ company, status: "Active" }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        jobs: {
+          total: totalJobs,
+          registered: registeredJobs,
+          pendingAtServiceCenter,
+          pendingAtServiceEngineer,
+          onHold: jobsOnHold,
+          completed: completedJobs,
+        },
+        aging: {
+          overOneDay: agingOverOneDay,
+          overThreeDays: agingOverThreeDays,
+          overSevenDays: agingOverSevenDays,
+        },
+        serviceCenters: {
+          total: totalServiceCenters,
+          active: activeServiceCenters,
+        },
+        serviceEngineers: {
+          total: totalServiceEngineers,
+          active: activeServiceEngineers,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getDashboardStats error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard stats",
       error: error.message,
     });
   }

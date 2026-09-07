@@ -45,24 +45,24 @@ const NAV_ITEMS = [
       { label: "All Jobs", href: "/company/jobs" },
     ],
   },
-  {
-    label: "Product Master",
-    href: "/company/products",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"
-        />
-      </svg>
-    ),
-  },
+  // {
+  //   label: "Product Master",
+  //   href: "/company/products",
+  //   icon: (props) => (
+  //     <svg
+  //       {...props}
+  //       viewBox="0 0 24 24"
+  //       fill="none"
+  //       stroke="currentColor"
+  //       strokeWidth="1.75">
+  //       <path
+  //         strokeLinecap="round"
+  //         strokeLinejoin="round"
+  //         d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"
+  //       />
+  //     </svg>
+  //   ),
+  // },
   {
     label: "Service Centers",
     icon: (props) => (
@@ -215,7 +215,9 @@ function SidebarContent({ pathname, onNavigate }) {
           </svg>
         </span>
         <div>
-          <p className="text-sm font-semibold text-white">Aceit Technologies (P)ltd</p>
+          <p className="text-sm font-semibold text-white">
+            Aceit Technologies (P)ltd
+          </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
             Company
           </p>
@@ -271,6 +273,8 @@ function SidebarContent({ pathname, onNavigate }) {
 export default function CompanyLayout({ children }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
+
+  const user = useAuthStore((s) => s.user);
 
   const currentLabel =
     NAV_ITEMS.flatMap((item) => (item.children ? item.children : [item])).find(
@@ -351,10 +355,10 @@ export default function CompanyLayout({ children }) {
               </button>
               <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-semibold text-white">
-                  CO
+                  C
                 </span>
                 <span className="hidden text-sm font-medium text-navy-900 sm:block">
-                  Orion Electronics
+                  {user?.name || "Orion Electronics"}
                 </span>
               </div>
             </div>

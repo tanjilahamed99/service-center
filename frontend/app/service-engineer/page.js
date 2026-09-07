@@ -86,7 +86,6 @@ export default function ServiceCenterDashboardPage() {
     setError("");
     try {
       const { data } = await getDashboardStats();
-      console.log(data);
       setStats(data.data);
     } catch (err) {
       setError(
