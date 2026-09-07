@@ -55,7 +55,6 @@ export default function CompanyForm({
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-
   async function handleSubmit(e) {
     e.preventDefault();
     setIsSaving(true);
@@ -166,17 +165,7 @@ export default function CompanyForm({
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Subscription & Status
         </h3>
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Creation Date">
-            <input
-              name="creationDate"
-              type="date"
-              value={form.creationDate}
-              onChange={handleChange}
-              className="input"
-              disabled={isEditMode}
-            />
-          </Field>
+        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Subscription From" required>
             <input
               name="subscriptionFrom"

@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { JOB_STATUS_LIST } from "@/components/job/Constants";
+import { useEffect, useState } from "react";
 import Modal from "../job/Modal";
+
+const JOB_STATUS = {
+  REGISTERED: "Registered",
+  SERVICE_CENTER_ASSIGNED: "Service Center Assigned",
+  SERVICE_ENGINEER_ASSIGNED: "Service Engineer Assigned",
+  HOLD: "Hold",
+  COMPLETED: "Completed",
+};
+const JOB_STATUS_LIST = Object.values(JOB_STATUS);
 
 export default function ServiceCenterUpdateStatusModal({
   open,
@@ -10,9 +18,18 @@ export default function ServiceCenterUpdateStatusModal({
   onClose,
   onUpdateStatus,
 }) {
-  const [status, setStatus] = useState(job?.status ?? "");
+  const [status, setStatus] = useState("");
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Resync whenever the modal opens for a job — fixes stale/undefined status
+  // from useState's initializer only ever running on first mount.
+  useEffect(() => {
+    if (open && job) {
+      setStatus(job.status);
+      setNote("");
+    }
+  }, [open, job]);
 
   if (!open || !job) return null;
 
@@ -49,7 +66,7 @@ export default function ServiceCenterUpdateStatusModal({
             className="w-full rounded-lg border border-gray-500 text-black bg-slate-50 px-3 py-2 text-sm focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400">
             {JOB_STATUS_LIST.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {s} {s === job.status ? "(current)" : ""}
               </option>
             ))}
           </select>

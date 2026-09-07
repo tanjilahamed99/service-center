@@ -16,7 +16,6 @@ exports.createCompany = async (req, res) => {
     gstNumber,
     username,
     password,
-    creationDate,
     subscriptionFrom,
     subscriptionTo,
     status,
@@ -64,7 +63,7 @@ exports.createCompany = async (req, res) => {
       gstNumber,
       username,
       password: await bcrypt.hash(password, 10),
-      creationDate: creationDate || Date.now(),
+      creationDate: Date.now(),
       subscriptionPlan: {
         fromDate: subscriptionFrom,
         toDate: subscriptionTo,

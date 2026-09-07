@@ -7,11 +7,24 @@ const TONE_STYLES = {
   slate: "bg-slate-100 text-slate-500 ring-slate-200",
 };
 
-export default function StatusBadge({ status, tone = "slate" }) {
+// One color per job status, matching your JOB_STATUS enum exactly.
+const STATUS_TONE = {
+  Registered: "electric",
+  "Service Center Assigned": "slate",
+  "Service Engineer Assigned": "amber",
+  Hold: "red",
+  Completed: "emerald",
+  Cancelled: "slate",
+};
+
+export default function StatusBadge({ status, tone }) {
+  // `tone` can still be passed explicitly to override, but status always
+  // has a sane default — so the color can never silently fail to update.
+  const resolvedTone = tone ?? STATUS_TONE[status] ?? "slate";
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${TONE_STYLES[tone] ?? TONE_STYLES.slate}`}
-    >
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${TONE_STYLES[resolvedTone]}`}>
       {status}
     </span>
   );

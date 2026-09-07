@@ -116,14 +116,6 @@ function RowActions({
         iconD="logs"
         onClick={() => onViewLogs?.(job)}
       />
-      {canCancel && (
-        <ActionButton
-          label="Cancel Job"
-          iconD="cancel"
-          tone="red"
-          onClick={() => onCancelJob?.(job)}
-        />
-      )}
     </div>
   );
 }
@@ -479,16 +471,6 @@ export default function ServiceCenterJobsTable({
         <table className="w-full min-w-[1200px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {showBulkAssign && (
-                <th className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400"
-                  />
-                </th>
-              )}
               <th className="whitespace-nowrap px-4 py-3">S.No.</th>
               <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
               <th className="whitespace-nowrap px-4 py-3">Booked</th>
@@ -515,17 +497,6 @@ export default function ServiceCenterJobsTable({
               <tr
                 key={idx}
                 className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                {showBulkAssign && (
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(job._id)}
-                      onChange={() => toggleOne(job._id)}
-                      disabled={!canSelectRow(job)}
-                      className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
-                    />
-                  </td>
-                )}
                 <td className="whitespace-nowrap px-4 py-3 text-slate-500">
                   {idx + 1}
                 </td>
@@ -581,10 +552,7 @@ export default function ServiceCenterJobsTable({
                   </td>
                 )}
                 <td className="whitespace-nowrap px-4 py-3">
-                  <StatusBadge
-                    status={job.status}
-                    tone={STATUS_TONE[job.status]}
-                  />
+                  <StatusBadge status={job.status} />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <AgingPill

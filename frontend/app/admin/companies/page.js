@@ -67,7 +67,6 @@ function SortIcon({ active, dir }) {
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState([]);
-  const [resettingId, setResettingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
   const [search, setSearch] = useState("");
