@@ -16,6 +16,8 @@ router.post(
 
 router.post("/createUser", adminCheck, companyController.createUser);
 router.get("/users", adminCheck, companyController.getUsers);
+router.put("/user/:id", adminCheck, companyController.updateUser);
+router.delete("/user/:id", adminCheck, companyController.deleteUser);
 
 router.get("/getProfile", adminCheck, companyController.getMyProfile);
 router.put("/updateProfile", adminCheck, companyController.updateMyProfile);

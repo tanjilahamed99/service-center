@@ -27,6 +27,14 @@ export const getUsers = () => {
   return API.get(`/admin/users`);
 };
 
+export const updateUser = (id, data) => {
+  return API.put(`/admin/user/${id}`, data);
+};
+
+export const deleteUser = (id) => {
+  return API.delete(`/admin/user/${id}`);
+};
+
 export const getProfile = () => API.get(`/admin/getProfile`);
 
 // data: { name, address, contactPerson, contactNumber, gstNumber }

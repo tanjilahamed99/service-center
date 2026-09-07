@@ -19,9 +19,10 @@ import {
   HardHat,
   ChevronDown,
 } from "lucide-react";
-import { createUsers, getUsers } from "@/actions/admin";
+import { createUsers, deleteUser, getUsers, updateUser } from "@/actions/admin";
 import { toast } from "sonner";
 import { formatDate } from "@/components/FormatDate";
+import Swal from "sweetalert2";
 
 const ROLE_CONFIG = {
   admin: {
@@ -53,10 +54,6 @@ export default function UsersPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showPassword, setShowPassword] = useState(false);
 
-  // =====================================================
-  // FILTER USERS
-  // =====================================================
-
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const searchValue = search.toLowerCase().trim();
@@ -76,20 +73,12 @@ export default function UsersPage() {
     });
   }, [users, search, roleFilter, statusFilter]);
 
-  // =====================================================
-  // OPEN CREATE MODAL
-  // =====================================================
-
   const handleCreate = () => {
     setEditingUser(null);
     setForm(EMPTY_FORM);
     setShowPassword(false);
     setShowModal(true);
   };
-
-  // =====================================================
-  // OPEN EDIT MODAL
-  // =====================================================
 
   const handleEdit = (user) => {
     setEditingUser(user);
@@ -106,20 +95,12 @@ export default function UsersPage() {
     setShowModal(true);
   };
 
-  // =====================================================
-  // CLOSE MODAL
-  // =====================================================
-
   const closeModal = () => {
     setShowModal(false);
     setEditingUser(null);
     setForm(EMPTY_FORM);
     setShowPassword(false);
   };
-
-  // =====================================================
-  // FORM CHANGE
-  // =====================================================
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -130,34 +111,25 @@ export default function UsersPage() {
     }));
   };
 
-  // =====================================================
-  // CREATE / UPDATE
-  // =====================================================
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (editingUser) {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === editingUser.id
-            ? {
-                ...user,
-                name: form.name,
-                email: form.email,
-                phone: form.phone,
-                role: form.role,
-              }
-            : user,
-        ),
-      );
+      const updateData = {
+        name: form.name,
+        phone: form.phone,
+        ...(form.password ? { password: form.password } : {}),
+      };
 
-
-      // const {data} = await updateUserData({id})
-
-
-
-
+      const { data } = await updateUser(editingUser._id, updateData);
+      if (data.success) {
+        toast.success("User updated"); // "Login successful" was leftover copy-paste from somewhere else, not accurate here
+        setUsers((prev) =>
+          prev.map((user) =>
+            user._id === editingUser._id ? { ...data.data } : user,
+          ),
+        );
+      }
     } else {
       const newUser = {
         name: form.name,
@@ -175,23 +147,27 @@ export default function UsersPage() {
     closeModal();
   };
 
-  // =====================================================
-  // DELETE
-  // =====================================================
-
   const handleDelete = (user) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${user.name}?`,
-    );
-
-    if (!confirmed) return;
-
-    setUsers((prev) => prev.filter((item) => item.id !== user.id));
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const { data } = await deleteUser(user._id);
+        if (data.success) {
+          toast.success("User deleted");
+          setUsers((prev) => prev.filter((item) => item._id !== user._id));
+        } else {
+          toast.error("Failed to delete user");
+        }
+      }
+    });
   };
-
-  // =====================================================
-  // TOGGLE STATUS
-  // =====================================================
 
   const handleToggleStatus = (user) => {
     setUsers((prev) =>
@@ -205,10 +181,6 @@ export default function UsersPage() {
       ),
     );
   };
-
-  // =====================================================
-  // ROLE ICON
-  // =====================================================
 
   const RoleIcon = ({ role }) => {
     const Icon = ROLE_CONFIG[role]?.icon || Users;
@@ -229,10 +201,6 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* ================================================= */}
-      {/* PAGE HEADER */}
-      {/* ================================================= */}
-
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -259,10 +227,6 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* ================================================= */}
-      {/* STATS */}
-      {/* ================================================= */}
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Admins"
@@ -276,10 +240,6 @@ export default function UsersPage() {
           icon={UserCheck}
         />
       </div>
-
-      {/* ================================================= */}
-      {/* TABLE CARD */}
-      {/* ================================================= */}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {/* Search + filters */}
@@ -503,26 +463,6 @@ export default function UsersPage() {
                           <Pencil size={16} />
                         </ActionButton>
 
-                        {/* Enable / Disable */}
-                        <ActionButton
-                          title={
-                            user.status === "active"
-                              ? "Disable user"
-                              : "Enable user"
-                          }
-                          onClick={() => handleToggleStatus(user)}
-                          className={
-                            user.status === "active"
-                              ? "hover:text-amber-600"
-                              : "hover:text-emerald-600"
-                          }>
-                          {user.status === "active" ? (
-                            <UserX size={16} />
-                          ) : (
-                            <UserCheck size={16} />
-                          )}
-                        </ActionButton>
-
                         {/* Delete */}
                         <ActionButton
                           title="Delete"
@@ -572,10 +512,6 @@ export default function UsersPage() {
           </span>
         </div>
       </div>
-
-      {/* ================================================= */}
-      {/* CREATE / EDIT MODAL */}
-      {/* ================================================= */}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -732,10 +668,6 @@ export default function UsersPage() {
   );
 }
 
-// =======================================================
-// STAT CARD
-// =======================================================
-
 function StatCard({ label, value, icon: Icon }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -753,10 +685,6 @@ function StatCard({ label, value, icon: Icon }) {
     </div>
   );
 }
-
-// =======================================================
-// FILTER SELECT
-// =======================================================
 
 function FilterSelect({ value, onChange, options }) {
   return (
@@ -780,10 +708,6 @@ function FilterSelect({ value, onChange, options }) {
   );
 }
 
-// =======================================================
-// ACTION BUTTON
-// =======================================================
-
 function ActionButton({ children, title, onClick, className = "" }) {
   return (
     <button
@@ -796,10 +720,6 @@ function ActionButton({ children, title, onClick, className = "" }) {
     </button>
   );
 }
-
-// =======================================================
-// FORM FIELD
-// =======================================================
 
 function FormField({ label, required, children }) {
   return (

@@ -18,6 +18,8 @@ import {
   Users,
   Cpu,
 } from "lucide-react";
+import { useAuthStore } from "@/features/Useauthstore";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   {
@@ -81,6 +83,12 @@ function NavLink({ item, pathname, onClick }) {
 }
 
 function SidebarContent({ pathname, onNavigate }) {
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const handleLogout = () => {
+    clearAuth();
+    toast.success("Logged out.");
+  };
+
   return (
     <div className="flex h-full flex-col bg-navy-900">
       {/* Brand */}
@@ -115,6 +123,7 @@ function SidebarContent({ pathname, onNavigate }) {
       {/* Logout */}
       <div className="border-t border-white/10 p-3">
         <button
+          onClick={handleLogout}
           type="button"
           className="flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
           <LogOut size={18} strokeWidth={1.75} className="text-slate-500" />

@@ -323,6 +323,65 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
+exports.updateUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, password } = req.body || {};
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const updateFields = {
+      ...(name && { name }),
+      ...(phone && { phone }),
+    };
+
+    if (password) {
+      updateFields.password = await bcrypt.hash(password, 10);
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields provided to update" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true, runValidators: true },
+    ).select("-password");
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("updateUser error:", error);
+    next(error);
+  }
+};
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    // Check for existing email with the same rol
+    const id = req.params.id;
+    await User.findByIdAndDelete(id);
+    res.status(201).send({
+      success: true,
+      message: "User deleted successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
 // GET /service-center/getProfile
 exports.getMyProfile = async (req, res) => {
   try {
@@ -461,13 +520,11 @@ exports.getDashboardStats = async (req, res) => {
     });
   } catch (error) {
     console.error("getDashboardStats error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch dashboard stats",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard stats",
+      error: error.message,
+    });
   }
 };
 
