@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const { default: mongoose } = require("mongoose");
 
 const SparePartTransactionSchema = new mongoose.Schema(
   {
@@ -40,19 +40,17 @@ const SparePartTransactionSchema = new mongoose.Schema(
       default: null,
     },
     quantity: { type: Number, required: true, min: 1 },
-    job: { type: mongoose.Schema.Types.ObjectId, ref: "Job", default: null }, // set for "Consume" transactions
+    job: { type: mongoose.Schema.Types.ObjectId, ref: "Job", default: null },
     note: { type: String, trim: true },
     actor: { type: String, trim: true },
   },
   { timestamps: true },
 );
 
-SparePartTransactionSchema.index(
-  { sparePart: 1, ownerType: 1, ownerId: 1 },
-  { unique: true },
-);
+// no unique index here — this is a log, not a running-total table
+
 const SparePartTransaction = mongoose.model(
-  "SparePartTransaction ",
+  "SparePartTransaction",
   SparePartTransactionSchema,
 );
 

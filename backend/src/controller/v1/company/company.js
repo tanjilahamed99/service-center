@@ -1416,12 +1416,10 @@ exports.createSparePart = async (req, res) => {
     } = req.body;
 
     if (!brand || !product || !spareName) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "brand, product and spareName are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "brand, product and spareName are required",
+      });
     }
 
     const sparePart = await SparePart.create({
@@ -1461,13 +1459,11 @@ exports.createSparePart = async (req, res) => {
       .json({ success: true, message: "Spare part created", data: sparePart });
   } catch (error) {
     console.error("createSparePart error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to create spare part",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create spare part",
+      error: error.message,
+    });
   }
 };
 
@@ -1510,13 +1506,11 @@ exports.getSpareParts = async (req, res) => {
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error("getSpareParts error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch spare parts",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch spare parts",
+      error: error.message,
+    });
   }
 };
 
@@ -1541,13 +1535,11 @@ exports.getSparePartById = async (req, res) => {
       .json({ success: true, data: { ...sparePart.toObject(), stock } });
   } catch (error) {
     console.error("getSparePartById error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch spare part",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch spare part",
+      error: error.message,
+    });
   }
 };
 
@@ -1574,13 +1566,11 @@ exports.updateSparePart = async (req, res) => {
       .json({ success: true, message: "Spare part updated", data: sparePart });
   } catch (error) {
     console.error("updateSparePart error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to update spare part",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update spare part",
+      error: error.message,
+    });
   }
 };
 
@@ -1618,13 +1608,11 @@ exports.deleteSparePart = async (req, res) => {
       .json({ success: true, message: "Spare part deleted" });
   } catch (error) {
     console.error("deleteSparePart error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to delete spare part",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete spare part",
+      error: error.message,
+    });
   }
 };
 
@@ -1638,12 +1626,10 @@ exports.restockSparePart = async (req, res) => {
     const { quantity, note } = req.body;
 
     if (!quantity || quantity <= 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "quantity must be a positive number",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "quantity must be a positive number",
+      });
     }
 
     const sparePart = await SparePart.findOne({ _id: req.params.id, company });
@@ -1672,7 +1658,7 @@ exports.restockSparePart = async (req, res) => {
       toId: null,
       quantity,
       note,
-      actor: req.user.name || "Company Admin",
+      actor: req.user.companyName || "Company",
     });
 
     return res
@@ -1680,13 +1666,11 @@ exports.restockSparePart = async (req, res) => {
       .json({ success: true, message: "Restocked", data: stock });
   } catch (error) {
     console.error("restockSparePart error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to restock",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to restock",
+      error: error.message,
+    });
   }
 };
 
@@ -1699,12 +1683,10 @@ exports.allocateSparePart = async (req, res) => {
     const { serviceCenter, quantity, note } = req.body;
 
     if (!serviceCenter || !quantity || quantity <= 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "serviceCenter and a positive quantity are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "serviceCenter and a positive quantity are required",
+      });
     }
 
     const [sparePart, center] = await Promise.all([
@@ -1769,22 +1751,18 @@ exports.allocateSparePart = async (req, res) => {
       actor: req.user.name || "Company Admin",
     });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: `Allocated ${quantity} to ${center.name}`,
-        data: centerStock,
-      });
+    return res.status(200).json({
+      success: true,
+      message: `Allocated ${quantity} to ${center.name}`,
+      data: centerStock,
+    });
   } catch (error) {
     console.error("allocateSparePart error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to allocate",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to allocate",
+      error: error.message,
+    });
   }
 };
 
@@ -1807,13 +1785,11 @@ exports.getSparePartStock = async (req, res) => {
     return res.status(200).json({ success: true, data: stock });
   } catch (error) {
     console.error("getSparePartStock error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch stock",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch stock",
+      error: error.message,
+    });
   }
 };
 
@@ -1833,12 +1809,10 @@ exports.getSparePartTransactions = async (req, res) => {
     return res.status(200).json({ success: true, data: transactions });
   } catch (error) {
     console.error("getSparePartTransactions error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch transactions",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch transactions",
+      error: error.message,
+    });
   }
 };
