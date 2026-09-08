@@ -6,100 +6,63 @@ import { usePathname } from "next/navigation";
 import PrivateRoutes from "@/components/PrivateRoutes/PrivateRoutes";
 import { useAuthStore } from "@/features/Useauthstore";
 import { toast } from "sonner";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Package,
+  Wrench,
+  Building2,
+  UserCircle,
+} from "lucide-react";
 
 const NAV_ITEMS = [
   {
     label: "Dashboard",
     href: "/company",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <rect x="3" y="3" width="8" height="8" rx="1.5" />
-        <rect x="13" y="3" width="8" height="8" rx="1.5" />
-        <rect x="3" y="13" width="8" height="8" rx="1.5" />
-        <rect x="13" y="13" width="8" height="8" rx="1.5" />
-      </svg>
-    ),
+    icon: LayoutDashboard,
   },
   {
     label: "Jobs",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"
-        />
-      </svg>
-    ),
+    icon: ClipboardList,
     children: [
-      { label: "Create Job", href: "/company/jobs/new" },
-      { label: "All Jobs", href: "/company/jobs" },
+      {
+        label: "Create Job",
+        href: "/company/jobs/new",
+      },
+      {
+        label: "All Jobs",
+        href: "/company/jobs",
+      },
     ],
   },
   {
     label: "Product Master",
     href: "/company/products",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"
-        />
-      </svg>
-    ),
+    icon: Package,
+  },
+  {
+    label: "Spare Parts",
+    href: "/company/spare-parts",
+    icon: Wrench,
   },
   {
     label: "Service Centers",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M14.7 6.3a4 4 0 01-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 015.4-5.4l-2.6 2.6-2-2 2.6-2.6z"
-        />
-      </svg>
-    ),
+    icon: Building2,
     children: [
-      { label: "All Service Centers", href: "/company/service-centers" },
-      { label: "All Service Engineers", href: "/company/service-engineers" },
+      {
+        label: "All Service Centers",
+        href: "/company/service-centers",
+      },
+      {
+        label: "All Service Engineers",
+        href: "/company/service-engineers",
+      },
     ],
   },
   {
     label: "Profile",
     href: "/company/profile",
-    icon: (props) => (
-      <svg
-        {...props}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75">
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="12" cy="10" r="3" />
-        <path strokeLinecap="round" d="M6.5 19a6 6 0 0111 0" />
-      </svg>
-    ),
+    icon: UserCircle,
   },
 ];
 

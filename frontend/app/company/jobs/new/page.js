@@ -126,6 +126,8 @@ export default function CreateJobPage() {
     return () => clearTimeout(timeout);
   }, [customerSearch, customer]);
 
+  const brandOptions = [...new Set(products.map((p) => p.brand))];
+
   const productOptions = [
     ...new Set(
       products.filter((p) => p.brand === form.brand).map((p) => p.productName),
@@ -454,9 +456,9 @@ export default function CreateJobPage() {
             }}
             className={inputClass}>
             <option value="">Select brand</option>
-            {products.map((opt, idx) => (
-              <option key={idx} value={opt.brand}>
-                {opt.brand}
+            {brandOptions.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
               </option>
             ))}
           </select>
