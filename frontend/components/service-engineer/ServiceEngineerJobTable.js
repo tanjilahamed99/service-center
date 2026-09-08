@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Phone, MapPin } from "lucide-react";
 import {
   CALL_TYPE_OPTIONS,
   NATURE_OF_WORK_OPTIONS,
@@ -274,14 +275,38 @@ export default function ServiceEngineerJobsTable({
                   {formatDate(job.scheduleDate)}
                 </td>
                 <td className="px-4 py-3">
+                  {/* Customer Name */}
                   <p
                     className="max-w-[180px] truncate font-medium text-navy-900"
                     title={job.customer?.name}>
-                    {job.customer?.name}
+                    {job.customer?.name || "N/A"}
                   </p>
-                  <p className="whitespace-nowrap text-xs text-slate-500">
-                    {job.customer?.mobileNumber}
-                  </p>
+
+                  {/* Mobile Number */}
+                  {job.customer?.mobileNumber && (
+                    <a
+                      href={`tel:${job.customer.mobileNumber}`}
+                      className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                      title={`Call ${job.customer.mobileNumber}`}>
+                      <Phone size={13} />
+                      {job.customer.mobileNumber}
+                    </a>
+                  )}
+
+                  {/* Address */}
+                  {job.customer?.address && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        job.customer.address,
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                      title={`Open location: ${job.customer.address}`}>
+                      <MapPin size={13} className="shrink-0" />
+                      <span className="truncate">{job.customer.address}</span>
+                    </a>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   <p className="text-navy-900">{job.natureOfWork}</p>
