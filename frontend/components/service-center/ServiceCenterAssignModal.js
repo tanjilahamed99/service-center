@@ -90,7 +90,7 @@ export default function ServiceCenterAssignJobModal({
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-electric-500 px-4 py-2 text-sm font-semibold text-white hover:brightness-110">
+            className="rounded-lg bg-electric-500 px-4 py-2 text-[12px] md:text-sm font-semibold text-white hover:brightness-110">
             Confirm Assignment
           </button>
         </div>

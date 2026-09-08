@@ -76,8 +76,6 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
 
   async function handleAssign({ jobIds, serviceEngineer, scheduleDate, note }) {
     try {
-      console.log(jobIds);
-
       const { data } = await assignJob({
         jobIds,
         serviceEngineer,
@@ -177,13 +175,6 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
         job={holdTarget}
         onClose={() => setHoldTarget(null)}
         onHold={handleHold}
-      />
-
-      <ServiceCenterCancelJobModal
-        open={!!cancelTarget}
-        job={cancelTarget}
-        onClose={() => setCancelTarget(null)}
-        onCancelJob={handleCancel}
       />
 
       <ViewLogsModal
