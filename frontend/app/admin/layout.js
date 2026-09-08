@@ -17,6 +17,7 @@ import {
   Bell,
   Users,
   Cpu,
+  Tags,
 } from "lucide-react";
 import { useAuthStore } from "@/features/Useauthstore";
 import { toast } from "sonner";
@@ -46,6 +47,11 @@ const NAV_ITEMS = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Job Categories",
+    href: "/admin/job-categories",
+    icon: Tags,
   },
   {
     label: "Profile",

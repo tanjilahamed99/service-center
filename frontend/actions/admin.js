@@ -49,3 +49,16 @@ export const getAdminServiceCenters = (params = {}) =>
 export const getAdminServiceEngineers = (params = {}) =>
   API.get(`/admin/getServiceEngineers`, { params });
 export const getCompaniesLookup = () => API.get(`/admin/getCompaniesLookup`);
+
+// actions/company.js (add these)
+export const getJobCategories = (type, activeOnly = false) =>
+  API.get("/admin/job-categories", { params: { type, activeOnly } });
+
+export const createJobCategory = (payload) =>
+  API.post("/admin/job-categories", payload);
+
+export const updateJobCategory = (id, payload) =>
+  API.patch(`/admin/job-categories/${id}`, payload);
+
+export const deleteJobCategory = (id) =>
+  API.delete(`/admin/job-categories/${id}`);

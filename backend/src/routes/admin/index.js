@@ -3,6 +3,19 @@ const router = express.Router();
 const companyController = require("../../controller/v1/admin/admin");
 const { adminCheck } = require("../../middlewares/validatoin");
 
+router.get("/job-categories", companyController.listJobCategories);
+router.post("/job-categories", adminCheck, companyController.createJobCategory);
+router.patch(
+  "/job-categories/:id",
+  adminCheck,
+  companyController.updateJobCategory,
+);
+router.delete(
+  "/job-categories/:id",
+  adminCheck,
+  companyController.deleteJobCategory,
+);
+
 router.post("/company", adminCheck, companyController.createCompany);
 router.get("/company", adminCheck, companyController.getAllCompanies);
 router.get("/company/:id", adminCheck, companyController.getCompanyById);

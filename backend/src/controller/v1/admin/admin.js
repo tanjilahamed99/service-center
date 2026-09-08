@@ -5,6 +5,7 @@ const User = require("../../../models/User");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const ServiceCenter = require("../../../models/ServiceCenter");
 const Job = require("../../../models/Job");
+const JobCategory = require("../../../models/JobCategory");
 
 // POST /api/companies
 exports.createCompany = async (req, res) => {
@@ -601,5 +602,107 @@ exports.getCompaniesLookup = async (req, res) => {
       message: "Failed to fetch companies",
       error: error.message,
     });
+  }
+};
+
+const VALID_TYPES = ["HoldSubStatus", "ActualIssue", "CorrectiveAction"];
+
+exports.listJobCategories = async (req, res) => {
+  try {
+    const { type } = req.query;
+    const filter = {};
+    if (type) {
+      if (!VALID_TYPES.includes(type)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid type" });
+      }
+      filter.type = type;
+    }
+
+    // non-admin callers (e.g. the status-update modal) only need active ones
+    if (req.query.activeOnly === "true") filter.isActive = true;
+
+    const categories = await JobCategory.find(filter).sort({
+      type: 1,
+      order: 1,
+      label: 1,
+    });
+    res.json({ success: true, data: categories });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.createJobCategory = async (req, res) => {
+  try {
+    const { type, label, order } = req.body;
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({ success: false, message: "Invalid type" });
+    }
+    if (!label?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Label is required" });
+    }
+
+    const category = await JobCategory.create({
+      type,
+      label: label.trim(),
+      order: order || 0,
+    });
+    res.status(201).json({ success: true, data: category });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "This label already exists for this category.",
+      });
+    }
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateJobCategory = async (req, res) => {
+  try {
+    const { label, isActive, order } = req.body;
+    const update = {};
+    if (label !== undefined) update.label = label.trim();
+    if (isActive !== undefined) update.isActive = isActive;
+    if (order !== undefined) update.order = order;
+
+    const category = await JobCategory.findOneAndUpdate(
+      { _id: req.params.id },
+      update,
+      { new: true, runValidators: true },
+    );
+    if (!category)
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
+    res.json({ success: true, data: category });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "This label already exists for this category.",
+      });
+    }
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteJobCategory = async (req, res) => {
+  try {
+    const category = await JobCategory.findOneAndDelete({
+      _id: req.params.id,
+    });
+    if (!category)
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
+    res.json({ success: true, message: "Category deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
