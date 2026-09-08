@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PrivateRoutes from "@/components/PrivateRoutes/PrivateRoutes";
 import { useAuthStore } from "@/features/Useauthstore";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   {

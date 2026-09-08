@@ -3,6 +3,8 @@ const Customer = require("../../../models/Customer");
 const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const bcrypt = require("bcrypt");
+const SparePartStock = require("../../../models/SparePartStock");
+const SparePartTransaction = require("../../../models/SparePartTransaction");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_STATUSES = [
@@ -197,12 +199,10 @@ exports.serviceEngineerHoldJob = async (req, res) => {
   }
 };
 
-// PUT /api/service-engineer/closeJob/:id
-// body: { consumedParts, serviceCharge, discount, actualIssueFound,
-//         correctiveActionTaken, closurePhotos, customerSignature, otp }
 exports.serviceEngineerCloseJob = async (req, res) => {
   try {
     const engineer = await ServiceEngineer.findById(req.user._id);
+
     if (!engineer) {
       return res
         .status(401)
@@ -227,7 +227,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
           "actualIssueFound, correctiveActionTaken and customerSignature are required",
       });
     }
-    // TODO: verify `otp` against your SMS/OTP provider before trusting closureOtpVerified.
     if (!otp) {
       return res
         .status(400)
@@ -236,13 +235,34 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     const existing = await Job.findOne({
       _id: req.params.id,
-      assignedServiceCenter: engineer.serviceCenter,
+      assignedServiceEngineer: engineer._id,
     });
     if (!existing) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found or not assigned to you",
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "Job not found or not assigned to you",
+        });
+    }
+
+    // Validate stock BEFORE touching anything, so a mid-way failure can't
+    // leave some parts decremented and others not.
+    const centerId = engineer.serviceCenter;
+    for (const part of consumedParts) {
+      if (!part.sparePart) continue; // free-text-only line item, no inventory link
+      const stock = await SparePartStock.findOne({
+        company: engineer.company,
+        sparePart: part.sparePart,
+        ownerType: "ServiceCenter",
+        ownerId: centerId,
       });
+      if (!stock || stock.quantity < part.quantity) {
+        return res.status(409).json({
+          success: false,
+          message: `Not enough stock at your service center for this part (have ${stock?.quantity ?? 0}, need ${part.quantity}).`,
+        });
+      }
     }
 
     const sparesTotal = consumedParts.reduce(
@@ -251,7 +271,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     );
 
     const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, assignedServiceCenter: engineer.serviceCenter },
+      { _id: req.params.id, assignedServiceEngineer: engineer._id },
       {
         $set: {
           status: "Completed",
@@ -277,16 +297,45 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       { new: true, runValidators: true },
     );
 
+    // Decrement stock + log a Consume transaction for every linked part.
+    for (const part of consumedParts) {
+      if (!part.sparePart) continue;
+      await SparePartStock.updateOne(
+        {
+          company: engineer.company,
+          sparePart: part.sparePart,
+          ownerType: "ServiceCenter",
+          ownerId: centerId,
+        },
+        { $inc: { quantity: -part.quantity } },
+      );
+      await SparePartTransaction.create({
+        company: engineer.company,
+        sparePart: part.sparePart,
+        type: "Consume",
+        fromType: "ServiceCenter",
+        fromId: centerId,
+        toType: null,
+        toId: null,
+        quantity: part.quantity,
+        job: job._id,
+        note: part.remarks,
+        actor: `Service Engineer:${engineer._id}`,
+      });
+    }
+
     return res
       .status(200)
       .json({ success: true, message: "Job closed", data: job });
   } catch (error) {
     console.error("serviceEngineerCloseJob error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to close job",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to close job",
+        error: error.message,
+      });
   }
 };
 
@@ -519,6 +568,38 @@ exports.getDashboardStats = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard stats",
+      error: error.message,
+    });
+  }
+};
+
+exports.getMySparePartStock = async (req, res) => {
+  try {
+    const engineer = await ServiceEngineer.findById(req.user._id);
+    if (!engineer) {
+      return res
+        .status(401)
+        .json({ success: false, message: "engineer not found" });
+    }
+
+    const stock = await SparePartStock.find({
+      company: engineer.company,
+      ownerType: "ServiceCenter",
+      ownerId: engineer.serviceCenter,
+      quantity: { $gt: 0 },
+    })
+      .populate(
+        "sparePart",
+        "brand product modelNumber spareName category unit",
+      )
+      .sort({ "sparePart.spareName": 1 });
+
+    return res.status(200).json({ success: true, data: stock });
+  } catch (error) {
+    console.error("getMySparePartStock error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch stock",
       error: error.message,
     });
   }

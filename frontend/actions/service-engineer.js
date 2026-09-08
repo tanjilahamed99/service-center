@@ -27,3 +27,5 @@ export const changePassword = (data) => {
 
 export const getDashboardStats = () =>
   API.get(`/service-engineer/dashboard-stats`);
+
+export const serviceEngineerGetMySparePartStock = () => API.get(`/service-engineer/getMySparePartStock`);
