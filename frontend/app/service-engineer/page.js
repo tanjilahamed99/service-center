@@ -154,7 +154,7 @@ export default function ServiceCenterDashboardPage() {
           </p>
         </div>
         <Link
-          href="/service-center/jobs"
+          href="/service-engineer/jobs"
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-electric-500 to-electric-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-electric-500/30 transition hover:brightness-110">
           View Jobs
         </Link>
