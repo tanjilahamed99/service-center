@@ -5,6 +5,9 @@ const ServiceEngineer = require("../../../models/ServiceEngineer");
 const bcrypt = require("bcrypt");
 const Company = require("../../../models/Company");
 const Product = require("../../../models/Products");
+const SparePartTransaction = require("../../../models/SparePartTransaction");
+const SparePartStock = require("../../../models/SparePartStock");
+const SparePart = require("../../../models/SpareParts");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -1396,5 +1399,446 @@ exports.deleteProduct = async (req, res) => {
       message: "Failed to delete product",
       error: error.message,
     });
+  }
+};
+
+exports.createSparePart = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const {
+      brand,
+      product,
+      modelNumber,
+      spareName,
+      category,
+      unit,
+      initialQuantity = 0,
+    } = req.body;
+
+    if (!brand || !product || !spareName) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "brand, product and spareName are required",
+        });
+    }
+
+    const sparePart = await SparePart.create({
+      company,
+      brand,
+      product,
+      modelNumber,
+      spareName,
+      category,
+      unit,
+    });
+
+    // Every spare part gets a Company-store stock row, even if it starts at 0.
+    await SparePartStock.create({
+      company,
+      sparePart: sparePart._id,
+      ownerType: "Company",
+      ownerId: null,
+      quantity: Math.max(0, Number(initialQuantity) || 0),
+    });
+
+    if (initialQuantity > 0) {
+      await SparePartTransaction.create({
+        company,
+        sparePart: sparePart._id,
+        type: "Restock",
+        toType: "Company",
+        toId: null,
+        quantity: initialQuantity,
+        note: "Initial stock",
+        actor: req.user.name || "Company Admin",
+      });
+    }
+
+    return res
+      .status(201)
+      .json({ success: true, message: "Spare part created", data: sparePart });
+  } catch (error) {
+    console.error("createSparePart error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to create spare part",
+        error: error.message,
+      });
+  }
+};
+
+// GET /getSpareParts   query: { search, brand, category, status }
+// Returns each spare part with its Company-store quantity attached, so the
+// list page can show "on hand" without a second round trip.
+exports.getSpareParts = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { search, brand, category, status } = req.query;
+
+    const filter = { company };
+    if (brand) filter.brand = brand;
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+    if (search) {
+      filter.$or = [
+        { spareName: { $regex: search, $options: "i" } },
+        { product: { $regex: search, $options: "i" } },
+        { modelNumber: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const spareParts = await SparePart.find(filter).sort({ createdAt: -1 });
+
+    const stockRows = await SparePartStock.find({
+      company,
+      ownerType: "Company",
+      sparePart: { $in: spareParts.map((s) => s._id) },
+    });
+    const stockBySparePart = Object.fromEntries(
+      stockRows.map((r) => [r.sparePart.toString(), r.quantity]),
+    );
+
+    const data = spareParts.map((sp) => ({
+      ...sp.toObject(),
+      companyStock: stockBySparePart[sp._id.toString()] ?? 0,
+    }));
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("getSpareParts error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch spare parts",
+        error: error.message,
+      });
+  }
+};
+
+// GET /getSparePartById/:id — includes full stock breakdown across every location
+exports.getSparePartById = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const sparePart = await SparePart.findOne({ _id: req.params.id, company });
+    if (!sparePart) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Spare part not found" });
+    }
+
+    const stock = await SparePartStock.find({
+      company,
+      sparePart: sparePart._id,
+    }).populate("ownerId", "name");
+
+    return res
+      .status(200)
+      .json({ success: true, data: { ...sparePart.toObject(), stock } });
+  } catch (error) {
+    console.error("getSparePartById error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch spare part",
+        error: error.message,
+      });
+  }
+};
+
+// PUT /updateSparePart/:id
+exports.updateSparePart = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { company: _c, ...updates } = req.body;
+
+    const sparePart = await SparePart.findOneAndUpdate(
+      { _id: req.params.id, company },
+      { $set: updates },
+      { new: true, runValidators: true },
+    );
+
+    if (!sparePart) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Spare part not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Spare part updated", data: sparePart });
+  } catch (error) {
+    console.error("updateSparePart error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to update spare part",
+        error: error.message,
+      });
+  }
+};
+
+// DELETE /deleteSparePart/:id — blocked if any stock exists anywhere
+exports.deleteSparePart = async (req, res) => {
+  try {
+    const company = req.user._id;
+
+    const hasStock = await SparePartStock.exists({
+      company,
+      sparePart: req.params.id,
+      quantity: { $gt: 0 },
+    });
+    if (hasStock) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This spare part still has stock somewhere — deallocate/consume it to zero first.",
+      });
+    }
+
+    const deleted = await SparePart.findOneAndDelete({
+      _id: req.params.id,
+      company,
+    });
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Spare part not found" });
+    }
+    await SparePartStock.deleteMany({ company, sparePart: req.params.id });
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Spare part deleted" });
+  } catch (error) {
+    console.error("deleteSparePart error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to delete spare part",
+        error: error.message,
+      });
+  }
+};
+
+// ============ Stock movement ============
+
+// POST /restockSparePart/:id
+// body: { quantity, note }  — adds to the company's own central store
+exports.restockSparePart = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { quantity, note } = req.body;
+
+    if (!quantity || quantity <= 0) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "quantity must be a positive number",
+        });
+    }
+
+    const sparePart = await SparePart.findOne({ _id: req.params.id, company });
+    if (!sparePart) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Spare part not found" });
+    }
+
+    const stock = await SparePartStock.findOneAndUpdate(
+      {
+        company,
+        sparePart: sparePart._id,
+        ownerType: "Company",
+        ownerId: null,
+      },
+      { $inc: { quantity } },
+      { new: true, upsert: true },
+    );
+
+    await SparePartTransaction.create({
+      company,
+      sparePart: sparePart._id,
+      type: "Restock",
+      toType: "Company",
+      toId: null,
+      quantity,
+      note,
+      actor: req.user.name || "Company Admin",
+    });
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Restocked", data: stock });
+  } catch (error) {
+    console.error("restockSparePart error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to restock",
+        error: error.message,
+      });
+  }
+};
+
+// POST /allocateSparePart/:id
+// body: { serviceCenter, quantity, note }
+// Moves quantity from the company's central store to a service center's stock.
+exports.allocateSparePart = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { serviceCenter, quantity, note } = req.body;
+
+    if (!serviceCenter || !quantity || quantity <= 0) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "serviceCenter and a positive quantity are required",
+        });
+    }
+
+    const [sparePart, center] = await Promise.all([
+      SparePart.findOne({ _id: req.params.id, company }),
+      ServiceCenter.findOne({ _id: serviceCenter, company }),
+    ]);
+    if (!sparePart)
+      return res
+        .status(404)
+        .json({ success: false, message: "Spare part not found" });
+    if (!center)
+      return res
+        .status(404)
+        .json({ success: false, message: "Service center not found" });
+
+    const companyStock = await SparePartStock.findOne({
+      company,
+      sparePart: sparePart._id,
+      ownerType: "Company",
+      ownerId: null,
+    });
+    if (!companyStock || companyStock.quantity < quantity) {
+      return res.status(409).json({
+        success: false,
+        message: `Not enough stock in the central store (have ${companyStock?.quantity ?? 0}, need ${quantity}).`,
+      });
+    }
+
+    // NOTE: these two updates aren't wrapped in a Mongo transaction — if you're
+    // running a replica set, wrap this in a session for atomicity. On a
+    // standalone Mongo instance, transactions aren't available at all.
+    await SparePartStock.updateOne(
+      {
+        company,
+        sparePart: sparePart._id,
+        ownerType: "Company",
+        ownerId: null,
+      },
+      { $inc: { quantity: -quantity } },
+    );
+    const centerStock = await SparePartStock.findOneAndUpdate(
+      {
+        company,
+        sparePart: sparePart._id,
+        ownerType: "ServiceCenter",
+        ownerId: serviceCenter,
+      },
+      { $inc: { quantity } },
+      { new: true, upsert: true },
+    );
+
+    await SparePartTransaction.create({
+      company,
+      sparePart: sparePart._id,
+      type: "Allocate",
+      fromType: "Company",
+      fromId: null,
+      toType: "ServiceCenter",
+      toId: serviceCenter,
+      quantity,
+      note,
+      actor: req.user.name || "Company Admin",
+    });
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: `Allocated ${quantity} to ${center.name}`,
+        data: centerStock,
+      });
+  } catch (error) {
+    console.error("allocateSparePart error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to allocate",
+        error: error.message,
+      });
+  }
+};
+
+// GET /getSparePartStock   query: { ownerType, ownerId } — e.g. a center's own on-hand list
+exports.getSparePartStock = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { ownerType = "Company", ownerId } = req.query;
+
+    const filter = { company, ownerType };
+    filter.ownerId = ownerType === "Company" ? null : ownerId;
+
+    const stock = await SparePartStock.find(filter)
+      .populate(
+        "sparePart",
+        "brand product modelNumber spareName category unit",
+      )
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({ success: true, data: stock });
+  } catch (error) {
+    console.error("getSparePartStock error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch stock",
+        error: error.message,
+      });
+  }
+};
+
+// GET /getSparePartTransactions/:id — full audit trail for one spare part
+exports.getSparePartTransactions = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const transactions = await SparePartTransaction.find({
+      company,
+      sparePart: req.params.id,
+    })
+      .populate("fromId", "name")
+      .populate("toId", "name")
+      .populate("job", "complaintNumber")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: transactions });
+  } catch (error) {
+    console.error("getSparePartTransactions error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch transactions",
+        error: error.message,
+      });
   }
 };

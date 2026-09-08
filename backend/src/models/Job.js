@@ -41,6 +41,7 @@ const CORRECTIVE_ACTION_TAKEN = [
 
 const ConsumedPartSchema = new mongoose.Schema(
   {
+    sparePart: { type: mongoose.Schema.Types.ObjectId, ref: "SparePart" }, // NEW — links to real inventory
     category: { type: String, trim: true },
     spareName: { type: String, trim: true },
     quantity: { type: Number, min: 1, default: 1 },

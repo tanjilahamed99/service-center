@@ -37,6 +37,16 @@ const {
   getProductById,
   getProducts,
   updateProduct,
+
+  allocateSparePart,
+  createSparePart,
+  deleteSparePart,
+  getSparePartById,
+  getSparePartStock,
+  getSparePartTransactions,
+  getSpareParts,
+  restockSparePart,
+  updateSparePart,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -95,5 +105,19 @@ router.get("/products", companyCheck, getProducts);
 router.get("/products/:id", companyCheck, getProductById);
 router.put("/products/:id", companyCheck, updateProduct);
 router.delete("/products/:id", companyCheck, deleteProduct);
+
+router.post("/createSparePart", companyCheck, createSparePart);
+router.get("/getSpareParts", companyCheck, getSpareParts);
+router.get("/getSparePartById/:id", companyCheck, getSparePartById);
+router.put("/updateSparePart/:id", companyCheck, updateSparePart);
+router.delete("/deleteSparePart/:id", companyCheck, deleteSparePart);
+router.post("/restockSparePart/:id", companyCheck, restockSparePart);
+router.post("/allocateSparePart/:id", companyCheck, allocateSparePart);
+router.get("/getSparePartStock", companyCheck, getSparePartStock);
+router.get(
+  "/getSparePartTransactions/:id",
+  companyCheck,
+  getSparePartTransactions,
+);
 
 module.exports = router;

@@ -99,16 +99,35 @@ export const changePassword = (data) =>
 
 export const getDashboardStats = () => API.get(`/company/getDashboardStats`);
 
+export const getProducts = (params = {}) =>
+  API.get(`/company/products`, { params });
 
-export const getProducts = (params = {}) => API.get(`/company/products`, { params });
- 
 export const getProductById = (id) => API.get(`/company/products/${id}`);
- 
+
 // data: { brand, productName, model, status }
 export const createProduct = (data) => API.post(`/company/products`, data);
- 
+
 // data: { brand, productName, model, status }
-export const updateProduct = (id, data) => API.put(`/company/products/${id}`, data);
- 
+export const updateProduct = (id, data) =>
+  API.put(`/company/products/${id}`, data);
+
 export const deleteProduct = (id) => API.delete(`/company/products/${id}`);
- 
+
+export const createSparePart = (data) =>
+  API.post(`/company/createSparePart`, data);
+export const getSpareParts = (params = {}) =>
+  API.get(`/company/getSpareParts`, { params });
+export const getSparePartById = (id) =>
+  API.get(`/company/getSparePartById/${id}`);
+export const updateSparePart = (id, data) =>
+  API.put(`/company/updateSparePart/${id}`, data);
+export const deleteSparePart = (id) =>
+  API.delete(`/company/deleteSparePart/${id}`);
+export const restockSparePart = (id, data) =>
+  API.post(`/company/restockSparePart/${id}`, data);
+export const allocateSparePart = (id, data) =>
+  API.post(`/company/allocateSparePart/${id}`, data);
+export const getSparePartStock = (params = {}) =>
+  API.get(`/company/getSparePartStock`, { params });
+export const getSparePartTransactions = (id) =>
+  API.get(`/company/getSparePartTransactions/${id}`);
