@@ -98,3 +98,17 @@ export const changePassword = (data) =>
   API.put(`/company/changePassword`, data);
 
 export const getDashboardStats = () => API.get(`/company/getDashboardStats`);
+
+
+export const getProducts = (params = {}) => API.get(`/company/products`, { params });
+ 
+export const getProductById = (id) => API.get(`/company/products/${id}`);
+ 
+// data: { brand, productName, model, status }
+export const createProduct = (data) => API.post(`/company/products`, data);
+ 
+// data: { brand, productName, model, status }
+export const updateProduct = (id, data) => API.put(`/company/products/${id}`, data);
+ 
+export const deleteProduct = (id) => API.delete(`/company/products/${id}`);
+ 

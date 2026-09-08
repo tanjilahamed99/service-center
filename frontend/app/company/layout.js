@@ -45,24 +45,24 @@ const NAV_ITEMS = [
       { label: "All Jobs", href: "/company/jobs" },
     ],
   },
-  // {
-  //   label: "Product Master",
-  //   href: "/company/products",
-  //   icon: (props) => (
-  //     <svg
-  //       {...props}
-  //       viewBox="0 0 24 24"
-  //       fill="none"
-  //       stroke="currentColor"
-  //       strokeWidth="1.75">
-  //       <path
-  //         strokeLinecap="round"
-  //         strokeLinejoin="round"
-  //         d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"
-  //       />
-  //     </svg>
-  //   ),
-  // },
+  {
+    label: "Product Master",
+    href: "/company/products",
+    icon: (props) => (
+      <svg
+        {...props}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"
+        />
+      </svg>
+    ),
+  },
   {
     label: "Service Centers",
     icon: (props) => (

@@ -15,9 +15,11 @@ import {
   getCustomerPreviousJobs,
   getServiceCenters,
   createJob,
+  getProducts,
 } from "@/actions/company"; // adjust path to wherever your axios service file lives
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import UploadImage from "@/components/UploadImage";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -67,6 +69,8 @@ export default function CreateJobPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [products, setProducts] = useState([]);
+  const [productsByBrand, setProductsByBrand] = useState([]);
 
   const [form, setForm] = useState({
     jobSource: "",
@@ -93,6 +97,14 @@ export default function CreateJobPage() {
         if (active) setServiceCenters(res.data?.data ?? []);
       })
       .catch((err) => console.error("Failed to load service centers", err));
+
+    getProducts()
+      .then((res) => {
+        if (res.data?.success) {
+          setProducts(res.data?.data ?? []);
+        }
+      })
+      .catch((err) => console.error("Failed to load products", err));
     return () => {
       active = false;
     };
@@ -114,9 +126,15 @@ export default function CreateJobPage() {
     return () => clearTimeout(timeout);
   }, [customerSearch, customer]);
 
-  const productOptions = form.brand
-    ? (PRODUCTS_BY_BRAND[form.brand] ?? [])
-    : [];
+  const productOptions = [
+    ...new Set(
+      products.filter((p) => p.brand === form.brand).map((p) => p.productName),
+    ),
+  ];
+
+  const modelOptions = products
+    .filter((p) => p.brand === form.brand && p.productName === form.product)
+    .map((p) => p.model);
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -156,6 +174,10 @@ export default function CreateJobPage() {
       }
     }
   }
+
+  const handleImage = (url) => {
+    setForm((prev) => ({ ...prev, ["file"]: url }));
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -432,9 +454,9 @@ export default function CreateJobPage() {
             }}
             className={inputClass}>
             <option value="">Select brand</option>
-            {BRANDS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
+            {products.map((opt, idx) => (
+              <option key={idx} value={opt.brand}>
+                {opt.brand}
               </option>
             ))}
           </select>
@@ -456,11 +478,20 @@ export default function CreateJobPage() {
           </select>
         </Field>
         <Field label="Model Number">
-          <input
+          <select
+            disabled={!form.product}
             value={form.modelNumber}
             onChange={(e) => update("modelNumber", e.target.value)}
-            className={inputClass}
-          />
+            className={inputClass}>
+            <option value="">
+              {form.brand ? "Select product" : "Select a brand first"}
+            </option>
+            {modelOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Serial Number">
           <input
@@ -510,17 +541,11 @@ export default function CreateJobPage() {
             className={inputClass}
           />
         </Field>
-        <Field label="Upload File" className="sm:col-span-2">
-          <input
-            type="file"
-            onChange={(e) => update("file", e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-electric-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-electric-500 hover:file:bg-electric-500/15"
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            File upload wiring pending — needs an upload endpoint that returns a
-            URL.
-          </p>
-        </Field>
+        <UploadImage
+          label={"Upload File"}
+          onChange={handleImage}
+          value={form.file}
+        />
       </SectionCard>
 
       {submitError && (

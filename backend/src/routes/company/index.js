@@ -32,6 +32,11 @@ const {
   changeMyPassword,
   updateMyProfile,
   getDashboardStats,
+  createProduct,
+  deleteProduct,
+  getProductById,
+  getProducts,
+  updateProduct,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -84,5 +89,11 @@ router.put("/updateProfile", companyCheck, updateMyProfile);
 router.put("/changePassword", companyCheck, changeMyPassword);
 
 router.get("/getDashboardStats", companyCheck, getDashboardStats);
+
+router.post("/products", companyCheck, createProduct);
+router.get("/products", companyCheck, getProducts);
+router.get("/products/:id", companyCheck, getProductById);
+router.put("/products/:id", companyCheck, updateProduct);
+router.delete("/products/:id", companyCheck, deleteProduct);
 
 module.exports = router;

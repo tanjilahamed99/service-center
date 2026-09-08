@@ -4,6 +4,7 @@ const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const bcrypt = require("bcrypt");
 const Company = require("../../../models/Company");
+const Product = require("../../../models/Products");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -1201,6 +1202,198 @@ exports.getDashboardStats = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard stats",
+      error: error.message,
+    });
+  }
+};
+
+// POST /company/products
+exports.createProduct = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { brand, productName, model, status } = req.body;
+
+    if (!brand || !productName || !model) {
+      return res.status(400).json({
+        success: false,
+        message: "brand, productName and model are required",
+      });
+    }
+
+    const existing = await Product.findOne({
+      company,
+      brand,
+      productName,
+      model,
+    });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "This Brand / Product / Model combination already exists",
+      });
+    }
+
+    const product = await Product.create({
+      company,
+      brand,
+      productName,
+      model,
+      status: status || "Active",
+    });
+
+    return res
+      .status(201)
+      .json({ success: true, message: "Product created", data: product });
+  } catch (error) {
+    console.error("createProduct error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create product",
+      error: error.message,
+    });
+  }
+};
+
+// GET /company/products?brand=&productName=&status=&search=
+exports.getProducts = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { brand, productName, status, search } = req.query;
+
+    const filter = { company };
+    if (brand) filter.brand = brand;
+    if (productName) filter.productName = productName;
+    if (status) filter.status = status;
+    if (search) {
+      filter.$or = [
+        { brand: { $regex: search, $options: "i" } },
+        { productName: { $regex: search, $options: "i" } },
+        { model: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const products = await Product.find(filter).sort({
+      brand: 1,
+      productName: 1,
+      model: 1,
+    });
+
+    return res.status(200).json({ success: true, data: products });
+  } catch (error) {
+    console.error("getProducts error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+      error: error.message,
+    });
+  }
+};
+
+// GET /company/products/:id
+exports.getProductById = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { id } = req.params;
+
+    const product = await Product.findOne({ _id: id, company });
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    return res.status(200).json({ success: true, data: product });
+  } catch (error) {
+    console.error("getProductById error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch product",
+      error: error.message,
+    });
+  }
+};
+
+// PUT /company/products/:id
+exports.updateProduct = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { id } = req.params;
+    const { brand, productName, model, status } = req.body;
+
+    if (brand || productName || model) {
+      const current = await Product.findOne({ _id: id, company });
+      if (!current) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
+      }
+
+      const duplicate = await Product.findOne({
+        company,
+        brand: brand || current.brand,
+        productName: productName || current.productName,
+        model: model || current.model,
+        _id: { $ne: id },
+      });
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: "This Brand / Product / Model combination already exists",
+        });
+      }
+    }
+
+    const updateFields = {
+      ...(brand && { brand }),
+      ...(productName && { productName }),
+      ...(model && { model }),
+      ...(status && { status }),
+    };
+
+    const product = await Product.findOneAndUpdate(
+      { _id: id, company },
+      { $set: updateFields },
+      { new: true, runValidators: true },
+    );
+
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Product updated", data: product });
+  } catch (error) {
+    console.error("updateProduct error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update product",
+      error: error.message,
+    });
+  }
+};
+
+// DELETE /company/products/:id
+exports.deleteProduct = async (req, res) => {
+  try {
+    const company = req.user._id;
+    const { id } = req.params;
+
+    const product = await Product.findOneAndDelete({ _id: id, company });
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "Product deleted" });
+  } catch (error) {
+    console.error("deleteProduct error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete product",
       error: error.message,
     });
   }
