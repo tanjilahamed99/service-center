@@ -532,13 +532,20 @@ exports.getDashboardStats = async (req, res) => {
 exports.getServiceCenters = async (req, res) => {
   try {
     const { company, status, search } = req.query;
+
     const filter = {};
     if (company) filter.company = company;
     if (status) filter.status = status;
+
     if (search) {
+      const matchingCompanies = await Company.find({
+        companyName: { $regex: search, $options: "i" },
+      }).select("_id");
+
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
         { username: { $regex: search, $options: "i" } },
+        { company: { $in: matchingCompanies.map((c) => c._id) } },
       ];
     }
 
@@ -558,7 +565,6 @@ exports.getServiceCenters = async (req, res) => {
   }
 };
 
-// GET /api/admin/getServiceEngineers   query: { company, serviceCenter, status, search }
 exports.getServiceEngineers = async (req, res) => {
   try {
     const { company, serviceCenter, status, search } = req.query;
@@ -566,10 +572,22 @@ exports.getServiceEngineers = async (req, res) => {
     if (company) filter.company = company;
     if (serviceCenter) filter.serviceCenter = serviceCenter;
     if (status) filter.status = status;
+
     if (search) {
+      const [matchingCompanies, matchingCenters] = await Promise.all([
+        Company.find({ companyName: { $regex: search, $options: "i" } }).select(
+          "_id",
+        ),
+        ServiceCenter.find({ name: { $regex: search, $options: "i" } }).select(
+          "_id",
+        ),
+      ]);
+
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
         { username: { $regex: search, $options: "i" } },
+        { company: { $in: matchingCompanies.map((c) => c._id) } },
+        { serviceCenter: { $in: matchingCenters.map((c) => c._id) } },
       ];
     }
 
@@ -593,7 +611,9 @@ exports.getServiceEngineers = async (req, res) => {
 // GET /api/admin/getCompaniesLookup — for the filter dropdowns on both list pages
 exports.getCompaniesLookup = async (req, res) => {
   try {
-    const companies = await Company.find({}).select("name").sort({ name: 1 });
+    const companies = await Company.find({})
+      .select("companyName")
+      .sort({ name: 1 });
     return res.status(200).json({ success: true, data: companies });
   } catch (error) {
     console.error("getCompaniesLookup error:", error);
@@ -605,104 +625,104 @@ exports.getCompaniesLookup = async (req, res) => {
   }
 };
 
-const VALID_TYPES = ["HoldSubStatus", "ActualIssue", "CorrectiveAction"];
-
-exports.listJobCategories = async (req, res) => {
+// GET /api/admin/getJobCategories   query: { type }
+exports.getJobCategories = async (req, res) => {
   try {
     const { type } = req.query;
-    const filter = {};
-    if (type) {
-      if (!VALID_TYPES.includes(type)) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid type" });
-      }
-      filter.type = type;
-    }
-
-    // non-admin callers (e.g. the status-update modal) only need active ones
-    if (req.query.activeOnly === "true") filter.isActive = true;
-
-    const categories = await JobCategory.find(filter).sort({
-      type: 1,
-      order: 1,
-      label: 1,
-    });
-    res.json({ success: true, data: categories });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.createJobCategory = async (req, res) => {
-  try {
-    const { type, label, order } = req.body;
-    if (!VALID_TYPES.includes(type)) {
-      return res.status(400).json({ success: false, message: "Invalid type" });
-    }
-    if (!label?.trim()) {
+    if (!type) {
       return res
         .status(400)
-        .json({ success: false, message: "Label is required" });
+        .json({ success: false, message: "type is required" });
     }
-
-    const category = await JobCategory.create({
-      type,
-      label: label.trim(),
-      order: order || 0,
+    const items = await JobCategory.find({ type }).sort({ label: 1 });
+    return res.status(200).json({ success: true, data: items });
+  } catch (error) {
+    console.error("getJobCategories error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch categories",
+      error: error.message,
     });
-    res.status(201).json({ success: true, data: category });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "This label already exists for this category.",
-      });
-    }
-    res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// POST /api/admin/createJobCategory   body: { type, label }
+exports.createJobCategory = async (req, res) => {
+  try {
+    const { type, label } = req.body;
+    if (!type || !label) {
+      return res
+        .status(400)
+        .json({ success: false, message: "type and label are required" });
+    }
+    const existing = await JobCategory.findOne({ type, label });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "This label already exists for that category",
+      });
+    }
+    const item = await JobCategory.create({ type, label });
+    return res
+      .status(201)
+      .json({ success: true, message: "Category added", data: item });
+  } catch (error) {
+    console.error("createJobCategory error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add category",
+      error: error.message,
+    });
+  }
+};
+
+// PUT /api/admin/updateJobCategory/:id   body: { label?, isActive? }
 exports.updateJobCategory = async (req, res) => {
   try {
-    const { label, isActive, order } = req.body;
-    const update = {};
-    if (label !== undefined) update.label = label.trim();
-    if (isActive !== undefined) update.isActive = isActive;
-    if (order !== undefined) update.order = order;
+    const { label, isActive } = req.body;
+    const updates = {};
+    if (label !== undefined) updates.label = label;
+    if (isActive !== undefined) updates.isActive = isActive;
 
-    const category = await JobCategory.findOneAndUpdate(
-      { _id: req.params.id },
-      update,
+    const item = await JobCategory.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
       { new: true, runValidators: true },
     );
-    if (!category)
+    if (!item) {
       return res
         .status(404)
         .json({ success: false, message: "Category not found" });
-    res.json({ success: true, data: category });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "This label already exists for this category.",
-      });
     }
-    res.status(500).json({ success: false, message: err.message });
+    return res
+      .status(200)
+      .json({ success: true, message: "Category updated", data: item });
+  } catch (error) {
+    console.error("updateJobCategory error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update category",
+      error: error.message,
+    });
   }
 };
 
+// DELETE /api/admin/deleteJobCategory/:id
 exports.deleteJobCategory = async (req, res) => {
   try {
-    const category = await JobCategory.findOneAndDelete({
-      _id: req.params.id,
-    });
-    if (!category)
+    const deleted = await JobCategory.findByIdAndDelete(req.params.id);
+    if (!deleted) {
       return res
         .status(404)
         .json({ success: false, message: "Category not found" });
-    res.json({ success: true, message: "Category deleted" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    }
+    return res.status(200).json({ success: true, message: "Category deleted" });
+  } catch (error) {
+    console.error("deleteJobCategory error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete category",
+      error: error.message,
+    });
   }
 };

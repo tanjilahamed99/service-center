@@ -68,7 +68,7 @@ export default function AdminServiceEngineersPage() {
           <option value="">All Companies</option>
           {companies.map((c) => (
             <option key={c._id} value={c._id}>
-              {c.name}
+              {c.companyName}
             </option>
           ))}
         </select>
@@ -134,7 +134,7 @@ export default function AdminServiceEngineersPage() {
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         e.status === "Active"
                           ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-500"
+                          : "bg-red-100 text-red-500"
                       }`}>
                       {e.status}
                     </span>

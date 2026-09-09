@@ -19,33 +19,28 @@ export default function LoginPage() {
     try {
       const email = e.target.identifier.value;
       const password = e.target.password.value;
-      const userData = {
-        email,
-        password,
-      };
 
-      const { data } = await login(userData);
+      const { data } = await login({ email, password });
 
       if (data.success) {
         setAuth({ token: data.token, user: data.user });
         toast.success("Login successful");
         const role = data.user.role;
-        if (role === "admin") {
-          router.push("/admin");
-        } else if (role === "company") {
-          router.push("/company");
-        } else if (role === "service-center") {
-          router.push("/service-center");
-        } else if (role === "service-engineer") {
-          router.push("/service-engineer");
-        }
+        if (role === "admin") router.push("/admin");
+        else if (role === "company") router.push("/company");
+        else if (role === "service-center") router.push("/service-center");
+        else if (role === "service-engineer") router.push("/service-engineer");
       }
     } catch (error) {
-      console.log(error);
-      const message = error?.response?.data?.message || "Something went wrong";
+      const resData = error?.response?.data;
 
+      if (resData?.restricted) {
+        router.push(`/account-restricted?reason=${resData.reason}`);
+        return;
+      }
+
+      const message = resData?.message || "Something went wrong";
       toast.error(message);
-      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
@@ -132,8 +127,8 @@ export default function LoginPage() {
 
         {/* Footer note */}
         <p className="relative mt-10 hidden text-xs text-slate-500 lg:block">
-          &copy; {new Date().getFullYear()} Aceit Technologies (P)ltd. All systems
-          operational.
+          &copy; {new Date().getFullYear()} Aceit Technologies (P)ltd. All
+          systems operational.
         </p>
       </div>
 

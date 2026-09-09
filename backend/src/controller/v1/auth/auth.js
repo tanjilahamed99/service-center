@@ -213,18 +213,10 @@ exports.login = async (req, res, next) => {
     }
 
     // ==========================================
-    // CHECK ACTIVE STATUS
-    // ==========================================
-
-    if (role !== "admin" && user.status && user.status !== "Active") {
-      return res.status(403).json({
-        success: false,
-        message: "Your account is inactive",
-      });
-    }
-
-    // ==========================================
     // CHECK PASSWORD
+    // (moved ahead of the status/subscription checks below — an attacker
+    // guessing usernames shouldn't be able to learn whether an account is
+    // active or expired without first proving they know the password)
     // ==========================================
 
     const passwordMatched = await bcrypt.compare(password, user.password);
@@ -234,6 +226,42 @@ exports.login = async (req, res, next) => {
         success: false,
         message: "Incorrect password",
       });
+    }
+
+    // ==========================================
+    // CHECK ACCOUNT RESTRICTIONS
+    // (inactive for company/service-center/service-engineer;
+    // subscription expiry additionally for company)
+    // ==========================================
+
+    if (role !== "admin") {
+      const isInactive = Boolean(user.status && user.status !== "Active");
+      if (isInactive) {
+        const reason = "inactive";
+        return res.status(303).json({
+          success: false,
+          restricted: true,
+          reason,
+          message: "Your account is inactive. Contact your admin for help.",
+        });
+      }
+    }
+    if (role === "company") {
+      const isSubscriptionExpired =
+        role === "company" &&
+        Boolean(user.subscriptionPlan?.toDate) &&
+        new Date() > new Date(user.subscriptionPlan.toDate);
+
+      if (isSubscriptionExpired) {
+        const reason = "subscription_expired";
+        return res.status(303).json({
+          success: false,
+          restricted: true,
+          reason,
+          message:
+            "Your subscription has expired. Contact your admin to renew.",
+        });
+      }
     }
 
     // ==========================================
@@ -292,7 +320,6 @@ exports.login = async (req, res, next) => {
     next(error);
   }
 };
-
 exports.register = async (req, res, next) => {
   const { name, email, password, role } = req.body || {};
 

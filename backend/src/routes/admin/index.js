@@ -3,7 +3,7 @@ const router = express.Router();
 const companyController = require("../../controller/v1/admin/admin");
 const { adminCheck } = require("../../middlewares/validatoin");
 
-router.get("/job-categories", companyController.listJobCategories);
+router.get("/job-categories", companyController.getJobCategories);
 router.post("/job-categories", adminCheck, companyController.createJobCategory);
 router.patch(
   "/job-categories/:id",

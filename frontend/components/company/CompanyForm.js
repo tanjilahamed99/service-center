@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const DEFAULT_VALUES = {
   companyName: "",
@@ -17,6 +17,15 @@ const DEFAULT_VALUES = {
   status: "Active",
 };
 
+// Normalizes any date-ish value (ISO string, Date object, "YYYY-MM-DD") into
+// the exact "YYYY-MM-DD" shape <input type="date"> requires to show a value.
+function toDateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
 function Field({ label, required, hint, children }) {
   return (
     <div>
@@ -29,23 +38,22 @@ function Field({ label, required, hint, children }) {
   );
 }
 
-// /**
-//  * Reusable form for creating and editing a Company.
-//  *
-//  * @param {object} props
-//  * @param {object} [props.initialData] - existing company values, for edit mode
-//  * @param {boolean} [props.isEditMode]
-//  * @param {(values: object) => Promise<void> | void} props.onSubmit
-//  */
 export default function CompanyForm({
   initialData,
   isEditMode = false,
   onSubmit,
 }) {
-  //   const router = useRouter();
+  const router = useRouter();
   const [form, setForm] = useState({
     ...DEFAULT_VALUES,
     ...initialData,
+    // API returns these nested under subscriptionPlan.{fromDate,toDate} —
+    // flatten + reformat into what the date inputs and handleSubmit expect.
+    subscriptionFrom: toDateInputValue(initialData?.subscriptionPlan?.fromDate),
+    subscriptionTo: toDateInputValue(initialData?.subscriptionPlan?.toDate),
+    creationDate: initialData?.creationDate
+      ? toDateInputValue(initialData.creationDate)
+      : DEFAULT_VALUES.creationDate,
     password: "",
   });
   const [isSaving, setIsSaving] = useState(false);

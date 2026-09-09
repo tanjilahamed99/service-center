@@ -14,6 +14,9 @@ const TABS = [
   { type: "HoldSubStatus", label: "Hold Reason Categories" },
   { type: "ActualIssue", label: "Actual Issue Found" },
   { type: "CorrectiveAction", label: "Corrective Action Taken" },
+  { type: "JobSource", label: "Job Source" }, // NEW
+  { type: "CallType", label: "Call Type" }, // NEW
+  { type: "NatureOfWork", label: "Nature of Work" }, // NEW
 ];
 
 const inputClass =

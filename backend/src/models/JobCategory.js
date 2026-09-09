@@ -4,13 +4,19 @@ const JobCategorySchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["HoldSubStatus", "ActualIssue", "CorrectiveAction"],
+      enum: [
+        "HoldSubStatus",
+        "ActualIssue",
+        "CorrectiveAction",
+        "JobSource", // NEW
+        "CallType", // NEW
+        "NatureOfWork", // NEW
+      ],
       required: true,
       index: true,
     },
     label: { type: String, required: true, trim: true },
     isActive: { type: Boolean, default: true },
-    order: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

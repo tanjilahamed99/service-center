@@ -92,8 +92,6 @@ export default function JobsListPage({ variant, title, subtitle }) {
     }
   }
 
-  
-
   if (loading) {
     return <p className="text-sm text-slate-400">Loading jobs…</p>;
   }
@@ -125,6 +123,7 @@ export default function JobsListPage({ variant, title, subtitle }) {
         jobIds={assignTarget ?? []}
         onClose={() => setAssignTarget(null)}
         onAssign={handleAssign}
+        serviceCenterOptions={serviceCenters} // NEW
       />
 
       <CancelJobModal

@@ -1,13 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  JOB_SOURCE_OPTIONS,
-  CALL_TYPE_OPTIONS,
-  NATURE_OF_WORK_OPTIONS,
-  BRANDS,
-  PRODUCTS_BY_BRAND,
-} from "@/components/job/Constants";
 import AddCustomerModal from "@/components/job/AddCustomerModal";
 import {
   searchCustomers,
@@ -16,6 +9,7 @@ import {
   getServiceCenters,
   createJob,
   getProducts,
+  getJobCategoryOptions,
 } from "@/actions/company"; // adjust path to wherever your axios service file lives
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -105,9 +99,30 @@ export default function CreateJobPage() {
         }
       })
       .catch((err) => console.error("Failed to load products", err));
+
     return () => {
       active = false;
     };
+  }, []);
+
+  const [jobSourceOptions, setJobSourceOptions] = useState([]);
+  const [callTypeOptions, setCallTypeOptions] = useState([]);
+  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
+
+  useEffect(() => {
+    Promise.all([
+      getJobCategoryOptions("JobSource"),
+      getJobCategoryOptions("CallType"),
+      getJobCategoryOptions("NatureOfWork"),
+    ])
+      .then(([source, callType, nature]) => {
+        setJobSourceOptions(source.data?.data ?? []);
+        setCallTypeOptions(callType.data?.data ?? []);
+        setNatureOfWorkOptions(nature.data?.data ?? []);
+      })
+      .catch((err) =>
+        console.error("Failed to load job category options", err),
+      );
   }, []);
 
   // ---- Debounced customer search against the backend ----
@@ -383,7 +398,7 @@ export default function CreateJobPage() {
             onChange={(e) => update("jobSource", e.target.value)}
             className={inputClass}>
             <option value="">Select source</option>
-            {JOB_SOURCE_OPTIONS.map((opt) => (
+            {jobSourceOptions.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
@@ -412,7 +427,7 @@ export default function CreateJobPage() {
             onChange={(e) => update("callType", e.target.value)}
             className={inputClass}>
             <option value="">Select call type</option>
-            {CALL_TYPE_OPTIONS.map((opt) => (
+            {callTypeOptions.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
@@ -426,7 +441,7 @@ export default function CreateJobPage() {
             onChange={(e) => update("natureOfWork", e.target.value)}
             className={inputClass}>
             <option value="">Select nature of work</option>
-            {NATURE_OF_WORK_OPTIONS.map((opt) => (
+            {natureOfWorkOptions.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>

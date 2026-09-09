@@ -8,6 +8,7 @@ const Product = require("../../../models/Products");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
 const SparePartStock = require("../../../models/SparePartStock");
 const SparePart = require("../../../models/SpareParts");
+const JobCategory = require("../../../models/JobCategory");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -1814,5 +1815,20 @@ exports.getSparePartTransactions = async (req, res) => {
       message: "Failed to fetch transactions",
       error: error.message,
     });
+  }
+};
+
+
+exports.getJobCategoryOptions = async (req, res) => {
+  try {
+    const { type } = req.query;
+    if (!type) {
+      return res.status(400).json({ success: false, message: "type is required" });
+    }
+    const items = await JobCategory.find({ type, isActive: true }).sort({ label: 1 }).select("label");
+    return res.status(200).json({ success: true, data: items.map((i) => i.label) });
+  } catch (error) {
+    console.error("getJobCategoryOptions error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch options", error: error.message });
   }
 };

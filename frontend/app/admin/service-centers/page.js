@@ -62,11 +62,11 @@ export default function AdminServiceCentersPage() {
         <select
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto">
+          className="w-full rounded-lg border border-slate-200 text-black bg-slate-50 px-3 py-2 text-sm focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto">
           <option value="">All Companies</option>
           {companies.map((c) => (
             <option key={c._id} value={c._id}>
-              {c.name}
+              {c.companyName}
             </option>
           ))}
         </select>
@@ -132,7 +132,7 @@ export default function AdminServiceCentersPage() {
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         c.status === "Active"
                           ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-500"
+                          : "bg-red-100 text-red-500"
                       }`}>
                       {c.status}
                     </span>

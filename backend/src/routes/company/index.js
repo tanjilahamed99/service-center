@@ -47,6 +47,7 @@ const {
   getSpareParts,
   restockSparePart,
   updateSparePart,
+  getJobCategoryOptions,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -119,5 +120,7 @@ router.get(
   companyCheck,
   getSparePartTransactions,
 );
+
+router.get("/getJobCategoryOptions", getJobCategoryOptions);
 
 module.exports = router;
