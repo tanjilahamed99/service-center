@@ -36,11 +36,39 @@ const CANCELLABLE_STATUSES = [JOB_STATUS.REGISTERED];
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
 
+function formatDuration(from, to) {
+  if (!from || !to) return "—";
+  const start = new Date(from);
+  const end = new Date(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
+
+  let diffMs = end - start;
+  if (diffMs < 0) diffMs = 0; // guards against bad data (solveDate before complaintDate)
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  // Always show minutes if the whole thing is under an hour, so a 20-minute
+  // job doesn't just show "—" or "0h" with nothing else.
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+
+  return parts.join(" ");
+}
+
+const TIME_ZONE = "Asia/Kolkata"; // covers all of India, IST (UTC+5:30) — not "Asia/Delhi"
+// change if your actual operating timezone differs
+
 function formatDateTime(value) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("en-IN", {
+    timeZone: TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -55,12 +83,12 @@ function formatShortDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-IN", {
+    timeZone: TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 }
-
 function AgingPill({ days }) {
   if (days === null || days === undefined)
     return <span className="text-sm text-slate-400">—</span>;
@@ -220,6 +248,17 @@ function JobCard({
             </p>
             <p className="mt-0.5 text-sm text-navy-900">
               {formatShortDate(job.scheduleDate)}
+            </p>
+          </div>
+
+          <div className="col-span-2">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              TAT
+            </p>
+            <p className="mt-0.5 text-sm text-navy-900">
+              {job.solveDate
+                ? formatDuration(job.complaintDate, job.solveDate)
+                : "—"}
             </p>
           </div>
           <div>
@@ -528,42 +567,8 @@ export default function JobsTable({
         </div>
       </div>
 
-      {/* Bulk assign bar */}
-      {showBulkAssign && selected.length > 0 && (
-        <div className="flex flex-col gap-2.5 rounded-xl border border-electric-400/40 bg-electric-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-navy-900">
-            {selected.length} job{selected.length > 1 ? "s" : ""} selected
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSelected([])}
-              className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => onAssignJob?.(selected)}
-              className="rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110">
-              Bulk Assign
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Mobile / tablet: stacked cards (below lg) */}
       <div className="space-y-3 lg:hidden">
-        {showBulkAssign && selectableRows.length > 0 && (
-          <label className="flex items-center gap-2 px-1 text-sm font-medium text-slate-500">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleAll}
-              className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400"
-            />
-            Select all ({selectableRows.length})
-          </label>
-        )}
         {filtered.map((job) => (
           <JobCard
             key={job._id}
@@ -593,17 +598,6 @@ export default function JobsTable({
           <table className="w-full min-w-[1300px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {showBulkAssign && (
-                  <th className="w-10 whitespace-nowrap px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleAll}
-                      disabled={selectableRows.length === 0}
-                      className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
-                    />
-                  </th>
-                )}
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
                 <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
@@ -629,23 +623,12 @@ export default function JobsTable({
             <tbody>
               {filtered.map((job, idx) => {
                 const tat = job?.solveDate
-                  ? `${job?.complaintDate?.slice(0, 10)} → ${job?.solveDate?.slice(0, 10)}`
+                  ? formatDuration(job.complaintDate, job.solveDate)
                   : "—";
                 return (
                   <tr
                     key={job._id}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    {showBulkAssign && (
-                      <td className="whitespace-nowrap px-4 py-3.5">
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(job._id)}
-                          onChange={() => toggleOne(job._id)}
-                          disabled={!canSelectRow(job)}
-                          className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
-                        />
-                      </td>
-                    )}
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
                       {idx + 1}
                     </td>

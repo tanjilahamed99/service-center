@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AddCustomerModal from "@/components/job/AddCustomerModal";
 import {
   searchCustomers,
@@ -418,6 +418,7 @@ export default function CreateJobPage() {
             value={form.complaintDate}
             onChange={(e) => update("complaintDate", e.target.value)}
             className={inputClass}
+            disabled
           />
         </Field>
         <Field label="Call Type">

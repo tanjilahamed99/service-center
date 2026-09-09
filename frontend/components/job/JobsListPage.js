@@ -21,8 +21,6 @@ const VARIANT_STATUS_FILTER = {
   hold: JOB_STATUS.HOLD,
   completed: JOB_STATUS.COMPLETED,
   cancelled: JOB_STATUS.CANCELLED,
-  // "all" has no entry — no status param is sent, and the page's own
-  // Status dropdown (if present) can pass a status through instead.
 };
 
 export default function JobsListPage({ variant, title, subtitle }) {
