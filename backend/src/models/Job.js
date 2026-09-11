@@ -1,7 +1,4 @@
 const mongoose = require("mongoose");
-const JOB_SOURCE = ["Customer Care", "Retailer", "Sales Representative"];
-const CALL_TYPE = ["Break Down", "Installation", "Paid Service", "Repeat Call"];
-const NATURE_OF_WORK = ["Service Required", "Installation", "First Service"];
 
 const JOB_STATUS = [
   "Registered",
@@ -12,32 +9,6 @@ const JOB_STATUS = [
   "Cancelled",
 ];
 
-const HOLD_SUB_STATUS = [
-  "Pending From Approval",
-  "Customer Not Available",
-  "Spare Part Shortage",
-  "Spare Ordered",
-  "Product to Service Center for Repair",
-];
-
-const ACTUAL_ISSUE_FOUND = [
-  "Service Required",
-  "RF PCB Problem",
-  "RF LED PCB",
-  "Wiring Fault",
-  "New Installation",
-  "Remote Pairing Problem",
-  "Glass Break",
-  "General Service",
-];
-
-const CORRECTIVE_ACTION_TAKEN = [
-  "Service Done",
-  "Installation Done",
-  "PCB Changed",
-  "Wiring Done",
-  "Glass Changed",
-];
 
 const ConsumedPartSchema = new mongoose.Schema(
   {
@@ -80,9 +51,9 @@ const JobSchema = new mongoose.Schema(
     complaintDate: { type: Date, default: Date.now },
 
     // Job details (Create Job form)
-    jobSource: { type: String, enum: JOB_SOURCE, required: true },
-    callType: { type: String, enum: CALL_TYPE, required: true },
-    natureOfWork: { type: String, enum: NATURE_OF_WORK, required: true },
+    jobSource: { type: String,  required: true },
+    callType: { type: String, required: true },
+    natureOfWork: { type: String, required: true },
     approxCost: { type: Number, min: 0 },
 
     // Product details
@@ -115,7 +86,7 @@ const JobSchema = new mongoose.Schema(
     solveDate: { type: Date },
 
     // Hold
-    holdSubStatus: { type: String, enum: HOLD_SUB_STATUS },
+    holdSubStatus: { type: String },
     holdReason: { type: String, trim: true },
     holdPhotos: [{ type: String }],
     holdRemarks: { type: String, trim: true },
@@ -125,10 +96,10 @@ const JobSchema = new mongoose.Schema(
     sparesTotal: { type: Number, min: 0, default: 0 },
     serviceCharge: { type: Number, min: 0, default: 0 },
     discount: { type: Number, min: 0, default: 0 },
-    actualIssueFound: { type: String, enum: ACTUAL_ISSUE_FOUND },
-    correctiveActionTaken: { type: String, enum: CORRECTIVE_ACTION_TAKEN },
-    // closurePhotos: [{ type: String }],
-    // customerSignature: { type: String }, // stored image/data URL path
+    actualIssueFound: { type: String },
+    correctiveActionTaken: { type: String },
+    closurePhotos: [{ type: String }],
+    customerSignature: { type: String }, // stored image/data URL path
     closureOtpVerified: { type: Boolean, default: false },
 
     // Cancellation

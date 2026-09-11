@@ -48,6 +48,8 @@ const {
   restockSparePart,
   updateSparePart,
   getJobCategoryOptions,
+  serviceCenterLogin,
+  serviceEngineerLogin,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -122,5 +124,8 @@ router.get(
 );
 
 router.get("/getJobCategoryOptions", getJobCategoryOptions);
+
+router.post("/serviceEngineerLogin/:id", companyCheck, serviceEngineerLogin);
+router.post("/serviceCenterLogin/:id", companyCheck, serviceCenterLogin);
 
 module.exports = router;

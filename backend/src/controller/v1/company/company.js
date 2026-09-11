@@ -9,6 +9,7 @@ const SparePartTransaction = require("../../../models/SparePartTransaction");
 const SparePartStock = require("../../../models/SparePartStock");
 const SparePart = require("../../../models/SpareParts");
 const JobCategory = require("../../../models/JobCategory");
+const jwt = require("jsonwebtoken");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -27,7 +28,6 @@ exports.createJob = async (req, res) => {
     const {
       customer,
       jobSource,
-      complaintDate,
       callType,
       natureOfWork,
       approxCost,
@@ -66,7 +66,6 @@ exports.createJob = async (req, res) => {
       company,
       customer,
       complaintNumber,
-      complaintDate: complaintDate || Date.now(),
       jobSource,
       callType,
       natureOfWork,
@@ -1818,17 +1817,117 @@ exports.getSparePartTransactions = async (req, res) => {
   }
 };
 
-
 exports.getJobCategoryOptions = async (req, res) => {
   try {
     const { type } = req.query;
     if (!type) {
-      return res.status(400).json({ success: false, message: "type is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "type is required" });
     }
-    const items = await JobCategory.find({ type, isActive: true }).sort({ label: 1 }).select("label");
-    return res.status(200).json({ success: true, data: items.map((i) => i.label) });
+    const items = await JobCategory.find({ type, isActive: true })
+      .sort({ label: 1 })
+      .select("label");
+    return res
+      .status(200)
+      .json({ success: true, data: items.map((i) => i.label) });
   } catch (error) {
     console.error("getJobCategoryOptions error:", error);
-    return res.status(500).json({ success: false, message: "Failed to fetch options", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch options",
+      error: error.message,
+    });
+  }
+};
+
+exports.serviceCenterLogin = async (req, res, next) => {
+  try {
+    const { id } = req.params || "";
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide id" });
+    }
+
+    const login = await ServiceCenter.findOne({
+      _id: id,
+      company: req.user._id,
+    });
+
+    if (!login) {
+      return res
+        .status(400)
+        .send({ status: false, message: "service center not found" });
+    }
+
+    const payload = {
+      id: login._id,
+      name: login.name,
+      role: "service-center",
+      username: login.username,
+      company: login.company,
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: 60 * 60 * 24 * 60 },
+      (err, token) => {
+        if (err) return res.status(500).json({ token: "Error signing token." });
+        res.status(200).json({ token, center: payload, success: true });
+      },
+    );
+
+    // use appropriate status code to send data
+  } catch (error) {
+    console.log(error.message);
+    next(error);
+  }
+};
+
+exports.serviceEngineerLogin = async (req, res, next) => {
+  try {
+    const { id } = req.params || "";
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide id" });
+    }
+
+    const login = await ServiceEngineer.findOne({
+      _id: id,
+      company: req.user._id,
+    });
+
+    if (!login) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Engineer not found" });
+    }
+
+    const payload = {
+      id: login._id,
+      name: login.name,
+      role: "service-engineer",
+      username: login.username,
+      company: login.company,
+      serviceCenter: login.serviceCenter,
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: 60 * 60 * 24 * 60 },
+      (err, token) => {
+        if (err) return res.status(500).json({ token: "Error signing token." });
+        res.status(200).json({ token, engineer: payload, success: true });
+      },
+    );
+
+    // use appropriate status code to send data
+  } catch (error) {
+    console.log(error.message);
+    next(error);
   }
 };

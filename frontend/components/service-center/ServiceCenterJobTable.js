@@ -17,6 +17,8 @@ import {
   ScrollText,
   Ban,
   Inbox,
+  MapPin,
+  Phone,
 } from "lucide-react";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
@@ -181,16 +183,39 @@ function JobCard({
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
             Customer
           </p>
+
           <p className="mt-0.5 truncate font-medium text-navy-900">
-            {job.customer?.name ?? "—"}
+            {job.customer?.name || "N/A"}
           </p>
-          {job.customer?.mobileNumber && (
-            <a
-              href={`tel:${job.customer.mobileNumber}`}
-              className="mt-0.5 inline-block text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">
-              {job.customer.mobileNumber}
-            </a>
-          )}
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {/* Phone */}
+            {job.customer?.mobileNumber && (
+              <a
+                href={`tel:${job.customer.mobileNumber}`}
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                title={`Call ${job.customer.mobileNumber}`}>
+                <Phone size={13} />
+                {job.customer.mobileNumber}
+              </a>
+            )}
+
+            {/* Address */}
+            {job.customer?.address && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  job.customer.address,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                title={`Open location: ${job.customer.address}`}>
+                <MapPin size={13} className="shrink-0" />
+
+                <span className="truncate">{job.customer.address}</span>
+              </a>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
@@ -228,14 +253,6 @@ function JobCard({
                 ? formatShortDate(job.solveDate)
                 : "Not solved yet"}
             </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Aging
-            </p>
-            <div className="mt-1">
-              <AgingPill days={agingDays} />
-            </div>
           </div>
         </div>
 
@@ -594,13 +611,42 @@ export default function ServiceCenterJobsTable({
                   </td>
                   <td className="px-4 py-3.5">
                     <p
-                      className="max-w-45 truncate font-medium text-navy-900"
+                      className="max-w-[180px] truncate font-medium text-navy-900"
                       title={job.customer?.name}>
-                      {job.customer?.name ?? "—"}
+                      {job.customer?.name || "N/A"}
                     </p>
-                    <p className="whitespace-nowrap text-xs text-slate-500">
-                      {job.customer?.mobileNumber ?? ""}
-                    </p>
+
+                    {/* Phone */}
+                    {job.customer?.mobileNumber && (
+                      <a
+                        href={`tel:${job.customer.mobileNumber}`}
+                        className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                        title={`Call ${job.customer.mobileNumber}`}>
+                        <Phone size={13} strokeWidth={1.75} />
+
+                        {job.customer.mobileNumber}
+                      </a>
+                    )}
+
+                    {/* Address / Google Maps */}
+                    {job.customer?.address && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          job.customer.address,
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                        title={`Open location: ${job.customer.address}`}>
+                        <MapPin
+                          size={13}
+                          strokeWidth={1.75}
+                          className="shrink-0"
+                        />
+
+                        <span className="truncate">{job.customer.address}</span>
+                      </a>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <p className="text-navy-900">{job.natureOfWork}</p>

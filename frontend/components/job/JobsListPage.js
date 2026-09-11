@@ -82,7 +82,8 @@ export default function JobsListPage({ variant, title, subtitle }) {
 
   async function handleCancel({ jobId, reason }) {
     try {
-      await cancelJob(jobId, { reason });
+      const data = { reason };
+      await cancelJob(jobId, data);
       setCancelTarget(null);
       await fetchJobs();
     } catch (err) {

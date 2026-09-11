@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CALL_TYPE_OPTIONS,
   NATURE_OF_WORK_OPTIONS,
@@ -17,14 +17,15 @@ import {
   ScrollText,
   Ban,
   Inbox,
+  MapPin,
+  Phone,
+  CalendarRange,
 } from "lucide-react";
+import { getJobCategoryOptions } from "@/actions/company";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
-const ASSIGNABLE_STATUSES = [
-  JOB_STATUS.REGISTERED,
-  JOB_STATUS.SERVICE_CENTER_ASSIGNED,
-];
+const ASSIGNABLE_STATUSES = [JOB_STATUS.REGISTERED, JOB_STATUS.SERVICE_CENTER_ASSIGNED];
 const BULK_SELECTABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
@@ -35,6 +36,8 @@ const CANCELLABLE_STATUSES = [JOB_STATUS.REGISTERED];
 
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
+
+const TIME_ZONE = "Asia/Kolkata";
 
 function formatDuration(from, to) {
   if (!from || !to) return "—";
@@ -53,15 +56,10 @@ function formatDuration(from, to) {
   const parts = [];
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
-  // Always show minutes if the whole thing is under an hour, so a 20-minute
-  // job doesn't just show "—" or "0h" with nothing else.
   if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
 
   return parts.join(" ");
 }
-
-const TIME_ZONE = "Asia/Kolkata"; // covers all of India, IST (UTC+5:30) — not "Asia/Delhi"
-// change if your actual operating timezone differs
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -89,21 +87,16 @@ function formatShortDate(value) {
     year: "numeric",
   });
 }
-function AgingPill({ days }) {
-  if (days === null || days === undefined)
-    return <span className="text-sm text-slate-400">—</span>;
-  const tone =
-    days >= 7
-      ? "text-red-600 bg-red-50 ring-1 ring-inset ring-red-100"
-      : days >= 3
-        ? "text-amber-600 bg-amber-50 ring-1 ring-inset ring-amber-100"
-        : "text-slate-600 bg-slate-100 ring-1 ring-inset ring-slate-200";
-  return (
-    <span
-      className={`inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${tone}`}>
-      {days} {days === 1 ? "day" : "days"}
-    </span>
-  );
+
+// Converts any date value to a "YYYY-MM-DD" string in the given timezone —
+// deliberately the same format <input type="date"> produces, so date-range
+// filtering is a plain string comparison instead of Date arithmetic (which
+// is where the earlier UTC-midnight/IST-offset bug came from).
+function toISODateInZone(value, timeZone = TIME_ZONE) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-CA", { timeZone }); // en-CA => YYYY-MM-DD
 }
 
 function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
@@ -120,22 +113,14 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}>
+      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}
+    >
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </button>
   );
 }
 
-function RowActions({
-  job,
-  canAssign,
-  canCancel,
-  onEditJob,
-  onAssignJob,
-  onViewLogs,
-  onCancelJob,
-  size = "md",
-}) {
+function RowActions({ job, canAssign, canCancel, onEditJob, onAssignJob, onViewLogs, onCancelJob, size = "md" }) {
   return (
     <div className="flex items-center gap-1">
       {canAssign && (
@@ -147,20 +132,9 @@ function RowActions({
           onClick={() => onAssignJob?.([job._id])}
         />
       )}
-      <ActionButton
-        label="View Logs"
-        Icon={ScrollText}
-        size={size}
-        onClick={() => onViewLogs?.(job)}
-      />
+      <ActionButton label="View Logs" Icon={ScrollText} size={size} onClick={() => onViewLogs?.(job)} />
       {canCancel && (
-        <ActionButton
-          label="Cancel Job"
-          Icon={Ban}
-          tone="red"
-          size={size}
-          onClick={() => onCancelJob?.(job)}
-        />
+        <ActionButton label="Cancel Job" Icon={Ban} tone="red" size={size} onClick={() => onCancelJob?.(job)} />
       )}
     </div>
   );
@@ -170,37 +144,15 @@ function RowActions({
  * Mobile/tablet card, shown below the `lg` breakpoint instead of a table row so long
  * text (customer names, service center names, reasons) can wrap without squeezing columns.
  */
-function JobCard({
-  job,
-  showCheckbox,
-  checked,
-  onToggle,
-  selectable,
-  showHoldReason,
-  showCancelReason,
-  actionProps,
-}) {
+function JobCard({ job, showHoldReason, showCancelReason, actionProps }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Header strip */}
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          {showCheckbox && (
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={onToggle}
-              disabled={!selectable}
-              className="h-4 w-4 shrink-0 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
-            />
-          )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-navy-900">
-              {job.complaintNumber}
-            </p>
-            <p className="text-xs text-slate-400">
-              Booked {formatShortDate(job.complaintDate)}
-            </p>
+            <p className="truncate text-sm font-semibold text-navy-900">{job.complaintNumber}</p>
+            <p className="text-xs text-slate-400">Booked {formatShortDate(job.complaintDate)}</p>
           </div>
         </div>
         <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
@@ -209,19 +161,35 @@ function JobCard({
       {/* Body */}
       <div className="space-y-3 px-4 py-3.5">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            Customer
-          </p>
-          <p className="mt-0.5 truncate font-medium text-navy-900">
-            {job.customer?.name ?? "—"}
-          </p>
-          {job.customer?.mobileNumber && (
-            <a
-              href={`tel:${job.customer.mobileNumber}`}
-              className="mt-0.5 inline-block text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">
-              {job.customer.mobileNumber}
-            </a>
-          )}
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Customer</p>
+
+          <p className="mt-0.5 truncate font-medium text-navy-900">{job.customer?.name || "N/A"}</p>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {job.customer?.mobileNumber && (
+              <a
+                href={`tel:${job.customer.mobileNumber}`}
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                title={`Call ${job.customer.mobileNumber}`}
+              >
+                <Phone size={13} />
+                {job.customer.mobileNumber}
+              </a>
+            )}
+
+            {job.customer?.address && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customer.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-w-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                title={`Open location: ${job.customer.address}`}
+              >
+                <MapPin size={13} className="shrink-0" />
+                <span className="truncate">{job.customer.address}</span>
+              </a>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
@@ -229,66 +197,38 @@ function JobCard({
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Nature / Call Type
             </p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.natureOfWork || "—"}
-            </p>
+            <p className="mt-0.5 text-sm text-navy-900">{job.natureOfWork || "—"}</p>
             <p className="text-xs text-slate-500">{job.callType}</p>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Assigned To
-            </p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Assigned To</p>
             <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.assignedTo ?? "—"}
+              {job?.assignedServiceCenter?.name ?? "—"}
             </p>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Schedule
-            </p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {formatShortDate(job.scheduleDate)}
-            </p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Schedule</p>
+            <p className="mt-0.5 text-sm text-navy-900">{formatShortDate(job.scheduleDate)}</p>
           </div>
 
           <div className="col-span-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              TAT
-            </p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">TAT</p>
             <p className="mt-0.5 text-sm text-navy-900">
-              {job.solveDate
-                ? formatDuration(job.complaintDate, job.solveDate)
-                : "—"}
+              {job.solveDate ? formatDuration(job.complaintDate, job.solveDate) : "—"}
             </p>
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Solved
-            </p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Solved</p>
             <p className="mt-0.5 text-sm text-navy-900">
-              {job.solveDate
-                ? formatShortDate(job.solveDate)
-                : "Not solved yet"}
+              {job.solveDate ? formatShortDate(job.solveDate) : "Not solved yet"}
             </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Aging
-            </p>
-            <div className="mt-1">
-              <AgingPill days={job.agingDays} />
-            </div>
           </div>
         </div>
 
         {showHoldReason && job.holdReason && (
           <div className="border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Reason for Hold
-            </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.holdReason}
-            </p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Reason for Hold</p>
+            <p className="mt-0.5 break-words text-sm text-navy-900">{job.holdReason}</p>
           </div>
         )}
         {showCancelReason && job.cancelReason && (
@@ -296,9 +236,7 @@ function JobCard({
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Cancellation Reason
             </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.cancelReason}
-            </p>
+            <p className="mt-0.5 break-words text-sm text-navy-900">{job.cancelReason}</p>
           </div>
         )}
       </div>
@@ -315,12 +253,8 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
       <Inbox className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
-      <p className="text-sm font-medium text-slate-500">
-        No jobs match the current filters
-      </p>
-      <p className="text-xs text-slate-400">
-        Try clearing a filter or searching a different term.
-      </p>
+      <p className="text-sm font-medium text-slate-500">No jobs match the current filters</p>
+      <p className="text-xs text-slate-400">Try clearing a filter or searching a different term.</p>
     </div>
   );
 }
@@ -343,42 +277,34 @@ export default function JobsTable({
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [jobSource, setJobSource] = useState("");
   const [callType, setCallType] = useState("");
   const [nature, setNature] = useState("");
   const [serviceCenter, setServiceCenter] = useState("");
   const [serviceEngineer, setServiceEngineer] = useState("");
+  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
+  const [dateTo, setDateTo] = useState(""); // "YYYY-MM-DD"
   const [selected, setSelected] = useState([]);
   const [sortDesc, setSortDesc] = useState(true);
 
   const isAllVariant = variant === "all";
 
   const showStatusFilter = isAllVariant;
-  const showAssignAction = isAllVariant
-    ? null
-    : variant === "registered" || variant === "serviceCenter";
+  const showAssignAction = isAllVariant ? null : variant === "registered" || variant === "serviceCenter";
   const showBulkAssign = isAllVariant
     ? true
-    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(
-        variant,
-      );
-  const showServiceCenterFilter =
-    isAllVariant ||
-    ["serviceCenter", "serviceEngineer", "hold"].includes(variant);
-  const showServiceEngineerFilter =
-    isAllVariant || ["serviceEngineer", "hold"].includes(variant);
+    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(variant);
+  const showServiceCenterFilter = isAllVariant || ["serviceCenter", "serviceEngineer", "hold"].includes(variant);
+  const showServiceEngineerFilter = isAllVariant || ["serviceEngineer", "hold"].includes(variant);
   const showHoldReasonColumn = isAllVariant || variant === "hold";
   const showCancelReasonColumn = isAllVariant || variant === "cancelled";
   const showCancelAction = isAllVariant ? null : variant === "registered";
 
   function canAssignRow(job) {
-    return isAllVariant
-      ? ASSIGNABLE_STATUSES.includes(job.status)
-      : showAssignAction;
+    return isAllVariant ? ASSIGNABLE_STATUSES.includes(job.status) : showAssignAction;
   }
   function canCancelRow(job) {
-    return isAllVariant
-      ? CANCELLABLE_STATUSES.includes(job.status)
-      : showCancelAction;
+    return isAllVariant ? CANCELLABLE_STATUSES.includes(job.status) : showCancelAction;
   }
   function canSelectRow(job) {
     return isAllVariant ? BULK_SELECTABLE_STATUSES.includes(job.status) : true;
@@ -392,60 +318,80 @@ export default function JobsTable({
         job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
         job?.customer?.mobileNumber?.includes(search);
       const matchesStatus = !status || job?.status === status;
+      const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
       const matchesNature = !nature || job?.natureOfWork === nature;
-      const matchesCenter =
-        !serviceCenter || job?.assignedServiceCenter === serviceCenter;
-      const matchesEngineer =
-        !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+      const matchesCenter = !serviceCenter || job?.assignedServiceCenter === serviceCenter;
+      const matchesEngineer = !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+
+      const jobDateStr = toISODateInZone(job?.complaintDate);
+      const matchesDateRange = (!dateFrom || jobDateStr >= dateFrom) && (!dateTo || jobDateStr <= dateTo);
+
       return (
         matchesSearch &&
         matchesStatus &&
+        matchesJobSource &&
         matchesCallType &&
         matchesNature &&
         matchesCenter &&
-        matchesEngineer
+        matchesEngineer &&
+        matchesDateRange
       );
     });
     return rows.sort((a, b) =>
-      sortDesc
-        ? new Date(b.complaintDate) - new Date(a.complaintDate)
-        : new Date(a.complaintDate) - new Date(b.complaintDate),
+      sortDesc ? new Date(b.complaintDate) - new Date(a.complaintDate) : new Date(a.complaintDate) - new Date(b.complaintDate)
     );
   }, [
     jobs,
     search,
     status,
+    jobSource,
     callType,
     nature,
     serviceCenter,
     serviceEngineer,
+    dateFrom,
+    dateTo,
     sortDesc,
   ]);
 
   const selectableRows = filtered.filter(canSelectRow);
-  const allSelected =
-    selectableRows.length > 0 && selected.length === selectableRows.length;
+  const allSelected = selectableRows.length > 0 && selected.length === selectableRows.length;
   const hasActiveFilters =
-    search || status || callType || nature || serviceCenter || serviceEngineer;
+    search || status || jobSource || callType || nature || serviceCenter || serviceEngineer || dateFrom || dateTo;
 
-  function toggleAll() {
-    setSelected(allSelected ? [] : selectableRows.map((j) => j._id));
-  }
+  const [jobSourceOptions, setJobSourceOptions] = useState([]);
+  const [callTypeOptions, setCallTypeOptions] = useState([]);
+  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
+
+  useEffect(() => {
+    Promise.all([
+      getJobCategoryOptions("JobSource"),
+      getJobCategoryOptions("CallType"),
+      getJobCategoryOptions("NatureOfWork"),
+    ])
+      .then(([source, callType, nature]) => {
+        setJobSourceOptions(source.data?.data ?? []);
+        setCallTypeOptions(callType.data?.data ?? []);
+        setNatureOfWorkOptions(nature.data?.data ?? []);
+      })
+      .catch((err) => console.error("Failed to load job category options", err));
+  }, []);
 
   function toggleOne(id) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   function clearFilters() {
     setSearch("");
     setStatus("");
+    setJobSource("");
     setCallType("");
     setNature("");
     setServiceCenter("");
     setServiceEngineer("");
+    setDateFrom("");
+    setDateTo("");
   }
 
   return (
@@ -454,13 +400,10 @@ export default function JobsTable({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-navy-900">{title}</h2>
-          {subtitle && (
-            <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
-          )}
+          {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
         </div>
         <p className="text-sm text-slate-400">
-          <span className="font-semibold text-navy-900">{filtered.length}</span>{" "}
-          of {jobs.length} jobs
+          <span className="font-semibold text-navy-900">{filtered.length}</span> of {jobs.length} jobs
         </p>
       </div>
 
@@ -482,10 +425,7 @@ export default function JobsTable({
 
           <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             {showStatusFilter && (
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className={selectClass}>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
                 <option value="">All Statuses</option>
                 {JOB_STATUS_LIST.map((opt) => (
                   <option key={opt} value={opt}>
@@ -495,24 +435,27 @@ export default function JobsTable({
               </select>
             )}
 
-            <select
-              value={callType}
-              onChange={(e) => setCallType(e.target.value)}
-              className={selectClass}>
-              <option value="">All Call Types</option>
-              {CALL_TYPE_OPTIONS.map((opt) => (
+            <select value={jobSource} onChange={(e) => setJobSource(e.target.value)} className={selectClass}>
+              <option value="">All Job Sources</option>
+              {jobSourceOptions?.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
             </select>
 
-            <select
-              value={nature}
-              onChange={(e) => setNature(e.target.value)}
-              className={selectClass}>
+            <select value={callType} onChange={(e) => setCallType(e.target.value)} className={selectClass}>
+              <option value="">All Call Types</option>
+              {callTypeOptions?.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+
+            <select value={nature} onChange={(e) => setNature(e.target.value)} className={selectClass}>
               <option value="">All Nature of Work</option>
-              {NATURE_OF_WORK_OPTIONS.map((opt) => (
+              {natureOfWorkOptions?.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -520,10 +463,7 @@ export default function JobsTable({
             </select>
 
             {showServiceCenterFilter && (
-              <select
-                value={serviceCenter}
-                onChange={(e) => setServiceCenter(e.target.value)}
-                className={selectClass}>
+              <select value={serviceCenter} onChange={(e) => setServiceCenter(e.target.value)} className={selectClass}>
                 <option value="">All Service Centers</option>
                 {serviceCenterOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -537,7 +477,8 @@ export default function JobsTable({
               <select
                 value={serviceEngineer}
                 onChange={(e) => setServiceEngineer(e.target.value)}
-                className={`${selectClass} col-span-2 sm:col-span-1`}>
+                className={`${selectClass} col-span-2 sm:col-span-1`}
+              >
                 <option value="">All Service Engineers</option>
                 {serviceEngineerOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -547,10 +488,33 @@ export default function JobsTable({
               </select>
             )}
 
+            {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
+            <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
+              <CalendarRange className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.75} />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                aria-label="From date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+              <span className="text-slate-300">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                aria-label="To date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+            </div>
+
             <button
               type="button"
               onClick={() => setSortDesc((v) => !v)}
-              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto"
+            >
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -559,7 +523,8 @@ export default function JobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
+                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto"
+              >
                 Clear filters
               </button>
             )}
@@ -607,31 +572,18 @@ export default function JobsTable({
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Nature / Call Type</th>
                 <th className="px-4 py-3">Assigned To</th>
-                {showHoldReasonColumn && (
-                  <th className="px-4 py-3">Reason for Hold</th>
-                )}
-                {showCancelReasonColumn && (
-                  <th className="px-4 py-3">Cancellation Reason</th>
-                )}
+                {showHoldReasonColumn && <th className="px-4 py-3">Reason for Hold</th>}
+                {showCancelReasonColumn && <th className="px-4 py-3">Cancellation Reason</th>}
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
-                <th className="whitespace-nowrap px-4 py-3">Aging</th>
-                <th className="whitespace-nowrap px-4 py-3 text-right">
-                  Actions
-                </th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((job, idx) => {
-                const tat = job?.solveDate
-                  ? formatDuration(job.complaintDate, job.solveDate)
-                  : "—";
+                const tat = job?.solveDate ? formatDuration(job.complaintDate, job.solveDate) : "—";
                 return (
-                  <tr
-                    key={job._id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
-                      {idx + 1}
-                    </td>
+                  <tr key={job._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">{idx + 1}</td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
                       {job.complaintNumber}
                     </td>
@@ -639,61 +591,66 @@ export default function JobsTable({
                       {formatDateTime(job.complaintDate)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                      {formatDateTime(job.scheduleDate)}
+                      {formatShortDate(job.scheduleDate)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {formatDateTime(job.solveDate)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                      {tat}
-                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">{tat}</td>
                     <td className="px-4 py-3.5">
-                      <p
-                        className="max-w-45 truncate font-medium text-navy-900"
-                        title={job.customer?.name}>
-                        {job.customer?.name ?? "—"}
+                      <p className="max-w-[180px] truncate font-medium text-navy-900" title={job.customer?.name}>
+                        {job.customer?.name || "N/A"}
                       </p>
-                      <p className="whitespace-nowrap text-xs text-slate-500">
-                        {job.customer?.mobileNumber ?? ""}
-                      </p>
+
+                      {job.customer?.mobileNumber && (
+                        <a
+                          href={`tel:${job.customer.mobileNumber}`}
+                          className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Call ${job.customer.mobileNumber}`}
+                        >
+                          <Phone size={13} strokeWidth={1.75} />
+                          {job.customer.mobileNumber}
+                        </a>
+                      )}
+
+                      {job.customer?.address && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customer.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Open location: ${job.customer.address}`}
+                        >
+                          <MapPin size={13} strokeWidth={1.75} className="shrink-0" />
+                          <span className="truncate">{job.customer.address}</span>
+                        </a>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
                       <p className="text-navy-900">{job.natureOfWork}</p>
                       <p className="text-xs text-slate-500">{job.callType}</p>
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
-                      <span
-                        className="block max-w-40 truncate"
-                        title={job.assignedTo}>
-                        {job.assignedTo ?? "—"}
+                      <span className="block max-w-40 truncate" title={job?.assignedServiceCenter?.name}>
+                        {job?.assignedServiceCenter?.name || "-"}
                       </span>
                     </td>
                     {showHoldReasonColumn && (
                       <td className="px-4 py-3.5 text-slate-600">
-                        <span
-                          className="block max-w-45 truncate"
-                          title={job.holdReason ?? ""}>
+                        <span className="block max-w-45 truncate" title={job.holdReason ?? ""}>
                           {job.holdReason ?? "—"}
                         </span>
                       </td>
                     )}
                     {showCancelReasonColumn && (
                       <td className="px-4 py-3.5 text-slate-600">
-                        <span
-                          className="block max-w-45 truncate"
-                          title={job.cancelReason ?? ""}>
+                        <span className="block max-w-45 truncate" title={job.cancelReason ?? ""}>
                           {job.cancelReason ?? "—"}
                         </span>
                       </td>
                     )}
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <StatusBadge
-                        status={job.status}
-                        tone={STATUS_TONE[job.status]}
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5">
-                      <AgingPill days={job.agingDays} />
+                      <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
                       <div className="flex items-center justify-end">

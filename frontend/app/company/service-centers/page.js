@@ -4,7 +4,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getServiceCenters, deleteServiceCenter } from "@/actions/company";
+import {
+  getServiceCenters,
+  deleteServiceCenter,
+  serviceCenterLogin,
+} from "@/actions/company";
+import { LogIn } from "lucide-react";
+import { toast } from "sonner";
+import Swal from "sweetalert2";
+import { useAuthStore } from "@/features/Useauthstore";
 
 export default function ServiceCentersPage() {
   const router = useRouter();
@@ -12,6 +20,7 @@ export default function ServiceCentersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   async function load() {
     setLoading(true);
@@ -43,6 +52,41 @@ export default function ServiceCentersPage() {
       setDeletingId(null);
     }
   }
+
+  const handleChangeAccount = async (serviceCenterId, name) => {
+    if (!serviceCenterId || !name) {
+      toast.error("center ID / center name is missing");
+      return;
+    }
+
+    Swal.fire({
+      title: "Are you sure",
+      text: "You want to login ",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, login!",
+    }).then(async (result) => {
+      if (result.isConfirmed)
+        try {
+          const { data } = await serviceCenterLogin(serviceCenterId);
+          if (data.success) {
+            setAuth({ token: data.token, user: data.center });
+            toast.success("Login successful");
+            router.push("/service-center");
+          }
+        } catch (error) {
+          console.error("Delete company error:", error);
+          const message =
+            error?.response?.data?.message ||
+            error?.message ||
+            "Something went wrong while deleting company";
+          toast.error(message);
+        } finally {
+        }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -126,6 +170,13 @@ export default function ServiceCentersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => handleChangeAccount(c._id, c.name)}
+                        type="button"
+                        title="Login as this company"
+                        className="rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
+                        <LogIn size={17} strokeWidth={1.75} />
+                      </button>
                       <button
                         type="button"
                         onClick={() =>

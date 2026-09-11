@@ -132,7 +132,11 @@ export const getSparePartStock = (params = {}) =>
 export const getSparePartTransactions = (id) =>
   API.get(`/company/getSparePartTransactions/${id}`);
 
-
 // actions/company.js — add:
 export const getJobCategoryOptions = (type) =>
   API.get(`/company/getJobCategoryOptions`, { params: { type } });
+
+export const serviceCenterLogin = (id) =>
+  API.post(`/company/serviceCenterLogin/${id}`);
+export const serviceEngineerLogin = (id) =>
+  API.post(`/company/serviceEngineerLogin/${id}`);
