@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const Job = require("../../../models/Job");
 const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
+const jwt = require("jsonwebtoken");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_STATUSES = [
@@ -577,5 +578,51 @@ exports.getDashboardStats = async (req, res) => {
       message: "Failed to fetch dashboard stats",
       error: error.message,
     });
+  }
+};
+
+exports.serviceEngineerLoginByCenter = async (req, res, next) => {
+  try {
+    const { id } = req.params || "";
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide id" });
+    }
+
+    const login = await ServiceEngineer.findOne({
+      _id: id,
+      serviceCenter: req.user._id,
+    });
+
+    if (!login) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Engineer not found" });
+    }
+
+    const payload = {
+      id: login._id,
+      name: login.name,
+      role: "service-engineer",
+      username: login.username,
+      company: login.company,
+      serviceCenter: login.serviceCenter,
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: 60 * 60 * 24 * 60 },
+      (err, token) => {
+        if (err) return res.status(500).json({ token: "Error signing token." });
+        res.status(200).json({ token, engineer: payload, success: true });
+      },
+    );
+
+    // use appropriate status code to send data
+  } catch (error) {
+    console.log(error.message);
+    next(error);
   }
 };

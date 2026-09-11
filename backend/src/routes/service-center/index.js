@@ -11,6 +11,7 @@ const {
   updateMyProfile,
   changeMyPassword,
   getDashboardStats,
+  serviceEngineerLoginByCenter,
 } = require("../../controller/v1/service-center/serviceCenter");
 const { serviceCenterCheck } = require("../../middlewares/validatoin");
 
@@ -35,5 +36,11 @@ router.put("/changePassword", serviceCenterCheck, changeMyPassword);
 
 // Dashboard
 router.get("/dashboard-stats", serviceCenterCheck, getDashboardStats);
+
+router.post(
+  "/service-engineer/:id",
+  serviceCenterCheck,
+  serviceEngineerLoginByCenter,
+);
 
 module.exports = router;

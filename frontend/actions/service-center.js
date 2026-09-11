@@ -49,3 +49,6 @@ export const changePassword = (data) =>
 
 export const getDashboardStats = () =>
   API.get(`/service-center/dashboard-stats`);
+
+export const loginServiceEngineer = (id) =>
+  API.post(`/service-center/service-engineer/${id}`);

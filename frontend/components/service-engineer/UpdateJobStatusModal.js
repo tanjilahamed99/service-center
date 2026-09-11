@@ -76,9 +76,9 @@ export default function UpdateJobStatusModal({
     if (form.targetStatus === "Hold") {
       if (!form.holdSubStatus)
         return setError("Select a hold reason category.");
-      if (form.holdPhotos.length < 2 || form.holdPhotos.length > 5) {
-        return setError("Attach between 2 and 5 photos for a hold.");
-      }
+      // if (form.holdPhotos.length < 2 || form.holdPhotos.length > 5) {
+      //   return setError("Attach between 2 and 5 photos for a hold.");
+      // }
       setSubmitting(true);
       try {
         await onHold(job._id, {
@@ -202,9 +202,8 @@ export default function UpdateJobStatusModal({
               />
             </div>
             <UploadImage
-              label="Photos (2–5 required)"
+              label="Photos"
               multiple
-              min={2}
               max={5}
               value={form.holdPhotos}
               onChange={(urls) => update("holdPhotos", urls)}
