@@ -165,7 +165,7 @@ export default function ServiceEngineersPage() {
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         e.status === "Active"
                           ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-500"
+                          : "bg-red-100 text-red-500"
                       }`}>
                       {e.status}
                     </span>
@@ -186,7 +186,7 @@ export default function ServiceEngineersPage() {
                             `/company/service-engineers/${e._id}/edit`,
                           )
                         }
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                        className="rounded-lg border border-gray-500 px-3 cursor-pointer py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                         Edit
                       </button>
                       <button

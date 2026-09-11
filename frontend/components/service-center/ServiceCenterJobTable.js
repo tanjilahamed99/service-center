@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CALL_TYPE_OPTIONS,
   NATURE_OF_WORK_OPTIONS,
@@ -19,7 +19,9 @@ import {
   Inbox,
   MapPin,
   Phone,
+  CalendarRange,
 } from "lucide-react";
+import { getJobCategoryOptions } from "@/actions/company";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
@@ -43,23 +45,6 @@ function computeAgingDays(complaintDate, status) {
     return null;
   const diffMs = Date.now() - new Date(complaintDate).getTime();
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-}
-
-function AgingPill({ days }) {
-  if (days === null || days === undefined)
-    return <span className="text-sm text-slate-400">—</span>;
-  const tone =
-    days >= 7
-      ? "text-red-600 bg-red-50 ring-1 ring-inset ring-red-100"
-      : days >= 3
-        ? "text-amber-600 bg-amber-50 ring-1 ring-inset ring-amber-100"
-        : "text-slate-600 bg-slate-100 ring-1 ring-inset ring-slate-200";
-  return (
-    <span
-      className={`inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${tone}`}>
-      {days} {days === 1 ? "day" : "days"}
-    </span>
-  );
 }
 
 function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
@@ -135,6 +120,7 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("en-IN", {
+    timeZone: TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -142,6 +128,41 @@ function formatDateTime(value) {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+const TIME_ZONE = "Asia/Kolkata";
+
+function formatDuration(from, to) {
+  if (!from || !to) return "—";
+  const start = new Date(from);
+  const end = new Date(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
+
+  let diffMs = end - start;
+  if (diffMs < 0) diffMs = 0; // guards against bad data (solveDate before complaintDate)
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+
+  return parts.join(" ");
+}
+
+// Converts any date value to a "YYYY-MM-DD" string in the given timezone —
+// deliberately the same format <input type="date"> produces, so date-range
+// filtering is a plain string comparison instead of Date arithmetic (which
+// is where the earlier UTC-midnight/IST-offset bug came from).
+function toISODateInZone(value, timeZone = TIME_ZONE) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-CA", { timeZone }); // en-CA => YYYY-MM-DD
 }
 
 /**
@@ -325,6 +346,10 @@ export default function ServiceCenterJobsTable({
   const [serviceEngineer, setServiceEngineer] = useState("");
   const [selected, setSelected] = useState([]);
   const [sortDesc, setSortDesc] = useState(true);
+  const [jobSource, setJobSource] = useState("");
+  const [serviceCenter, setServiceCenter] = useState("");
+  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
+  const [dateTo, setDateTo] = useState(""); // "YYYY-MM-DD"
 
   const isAllVariant = variant === "all";
 
@@ -365,17 +390,28 @@ export default function ServiceCenterJobsTable({
         job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
         job?.customer?.mobileNumber?.includes(search);
       const matchesStatus = !status || job?.status === status;
+      const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
       const matchesNature = !nature || job?.natureOfWork === nature;
+      const matchesCenter =
+        !serviceCenter || job?.assignedServiceCenter === serviceCenter;
       const matchesEngineer =
-        !serviceEngineer ||
-        job?.assignedServiceEngineer?._id === serviceEngineer;
+        !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+
+      const jobDateStr = toISODateInZone(job?.complaintDate);
+      const matchesDateRange =
+        (!dateFrom || jobDateStr >= dateFrom) &&
+        (!dateTo || jobDateStr <= dateTo);
+
       return (
         matchesSearch &&
         matchesStatus &&
+        matchesJobSource &&
         matchesCallType &&
         matchesNature &&
-        matchesEngineer
+        matchesCenter &&
+        matchesEngineer &&
+        matchesDateRange
       );
     });
     return rows.sort((a, b) =>
@@ -383,17 +419,53 @@ export default function ServiceCenterJobsTable({
         ? new Date(b.complaintDate) - new Date(a.complaintDate)
         : new Date(a.complaintDate) - new Date(b.complaintDate),
     );
-  }, [jobs, search, status, callType, nature, serviceEngineer, sortDesc]);
+  }, [
+    jobs,
+    search,
+    status,
+    jobSource,
+    callType,
+    nature,
+    serviceCenter,
+    serviceEngineer,
+    dateFrom,
+    dateTo,
+    sortDesc,
+  ]);
 
   const selectableRows = filtered.filter(canSelectRow);
   const allSelected =
     selectableRows.length > 0 && selected.length === selectableRows.length;
   const hasActiveFilters =
-    search || status || callType || nature || serviceEngineer;
+    search ||
+    status ||
+    jobSource ||
+    callType ||
+    nature ||
+    serviceCenter ||
+    serviceEngineer ||
+    dateFrom ||
+    dateTo;
 
-  function toggleAll() {
-    setSelected(allSelected ? [] : selectableRows.map((j) => j._id));
-  }
+  const [jobSourceOptions, setJobSourceOptions] = useState([]);
+  const [callTypeOptions, setCallTypeOptions] = useState([]);
+  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
+
+  useEffect(() => {
+    Promise.all([
+      getJobCategoryOptions("JobSource"),
+      getJobCategoryOptions("CallType"),
+      getJobCategoryOptions("NatureOfWork"),
+    ])
+      .then(([source, callType, nature]) => {
+        setJobSourceOptions(source.data?.data ?? []);
+        setCallTypeOptions(callType.data?.data ?? []);
+        setNatureOfWorkOptions(nature.data?.data ?? []);
+      })
+      .catch((err) =>
+        console.error("Failed to load job category options", err),
+      );
+  }, []);
 
   function toggleOne(id) {
     setSelected((prev) =>
@@ -448,7 +520,7 @@ export default function ServiceCenterJobsTable({
                 onChange={(e) => setStatus(e.target.value)}
                 className={selectClass}>
                 <option value="">All Statuses</option>
-                {JOB_STATUS_LIST.map((opt) => (
+                {JOB_STATUS_LIST?.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
@@ -457,11 +529,23 @@ export default function ServiceCenterJobsTable({
             )}
 
             <select
+              value={jobSource}
+              onChange={(e) => setJobSource(e.target.value)}
+              className={selectClass}>
+              <option value="">All Job Sources</option>
+              {jobSourceOptions?.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={callType}
               onChange={(e) => setCallType(e.target.value)}
               className={selectClass}>
               <option value="">All Call Types</option>
-              {CALL_TYPE_OPTIONS.map((opt) => (
+              {callTypeOptions?.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -473,7 +557,7 @@ export default function ServiceCenterJobsTable({
               onChange={(e) => setNature(e.target.value)}
               className={selectClass}>
               <option value="">All Nature of Work</option>
-              {NATURE_OF_WORK_OPTIONS.map((opt) => (
+              {natureOfWorkOptions?.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -486,13 +570,38 @@ export default function ServiceCenterJobsTable({
                 onChange={(e) => setServiceEngineer(e.target.value)}
                 className={`${selectClass} col-span-2 sm:col-span-1`}>
                 <option value="">All Service Engineers</option>
-                {serviceEngineerOptions.map((opt) => (
+                {serviceEngineerOptions?.map((opt) => (
                   <option key={opt._id} value={opt._id}>
                     {opt.name}
                   </option>
                 ))}
               </select>
             )}
+
+            {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
+            <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
+              <CalendarRange
+                className="h-4 w-4 shrink-0 text-slate-400"
+                strokeWidth={1.75}
+              />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                aria-label="From date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+              <span className="text-slate-300">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                aria-label="To date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+            </div>
 
             <button
               type="button"
@@ -583,7 +692,6 @@ export default function ServiceCenterJobsTable({
                   <th className="px-4 py-3">Cancellation Reason</th>
                 )}
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
-                <th className="whitespace-nowrap px-4 py-3">Aging</th>
                 <th className="whitespace-nowrap px-4 py-3 text-right">
                   Actions
                 </th>
@@ -601,13 +709,13 @@ export default function ServiceCenterJobsTable({
                     {job.complaintNumber}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                    {formatShortDate(job.complaintDate)}
+                    {formatDateTime(job.complaintDate)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatShortDate(job.scheduleDate)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                    {formatShortDate(job.solveDate)}
+                    {formatDateTime(job.solveDate)}
                   </td>
                   <td className="px-4 py-3.5">
                     <p
@@ -681,11 +789,6 @@ export default function ServiceCenterJobsTable({
                     <StatusBadge
                       status={job.status}
                       tone={STATUS_TONE[job.status]}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    <AgingPill
-                      days={computeAgingDays(job.complaintDate, job.status)}
                     />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5">

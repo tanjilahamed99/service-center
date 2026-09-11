@@ -82,7 +82,6 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
         scheduleDate,
         note,
       });
-      console.log(data);
       setAssignTarget(null);
       await fetchJobs(); // simplest correct option: just re-pull from the server
     } catch (err) {
@@ -121,17 +120,6 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
       console.error("Failed to update status", err);
     }
   }
-
-  async function handleCancel({ jobId, reason }) {
-    try {
-      await cancelJob(jobId, { reason });
-      setCancelTarget(null);
-      await fetchJobs();
-    } catch (err) {
-      console.error("Failed to cancel job", err);
-    }
-  }
-
   if (loading) {
     return <p className="text-sm text-slate-400">Loading jobs…</p>;
   }
