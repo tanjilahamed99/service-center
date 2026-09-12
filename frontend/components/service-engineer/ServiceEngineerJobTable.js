@@ -9,6 +9,7 @@ import {
   Eye,
   RefreshCw,
   Inbox,
+  ScrollText,
 } from "lucide-react";
 import {
   CALL_TYPE_OPTIONS,
@@ -17,7 +18,34 @@ import {
   JOB_STATUS_LIST,
 } from "../job/Constants";
 import StatusBadge from "../job/Statusbadge";
-import { formatDate } from "../FormatDate";
+
+const TIME_ZONE = "Asia/Kolkata";
+
+function formatShortDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
@@ -39,25 +67,28 @@ function AgingPill({ days }) {
   );
 }
 
-function RowActions({ job, onViewJob, onUpdateStatus, size = "md" }) {
+function RowActions({ job, onViewJob, onUpdateStatus, size = "md", status }) {
   const dim = size === "sm" ? "h-8 w-8" : "h-9 w-9";
   return (
     <div className="flex items-center gap-1.5">
+      {status !== "Completed" && (
+        <button
+          type="button"
+          onClick={() => onUpdateStatus?.(job)}
+          title="Update Status"
+          aria-label="Update Status"
+          className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg text-electric-600 transition hover:bg-electric-500/10`}>
+          <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onViewJob?.(job)}
         title="View Job"
         aria-label="View Job"
         className={`flex ${dim} shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-navy-900`}>
-        <Eye className="h-4 w-4" strokeWidth={1.75} />
-      </button>
-      <button
-        type="button"
-        onClick={() => onUpdateStatus?.(job)}
-        title="Update Status"
-        aria-label="Update Status"
-        className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg text-electric-600 transition hover:bg-electric-500/10`}>
-        <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
+        <ScrollText className="h-4 w-4" strokeWidth={1.75} />
       </button>
     </div>
   );
@@ -74,7 +105,7 @@ function JobCard({ job, onViewJob, onUpdateStatus }) {
           </p>
 
           <p className="text-xs text-slate-400">
-            {formatDate(job.scheduleDate) || job.bookDateTime}
+            {formatShortDate(job.scheduleDate)}
           </p>
         </div>
 
@@ -145,17 +176,6 @@ function JobCard({ job, onViewJob, onUpdateStatus }) {
             <p className="mt-0.5 text-sm text-navy-900">
               {job.callType || "—"}
             </p>
-          </div>
-
-          {/* Aging */}
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Aging
-            </p>
-
-            <div className="mt-1">
-              <AgingPill days={job.agingDays} />
-            </div>
           </div>
         </div>
       </div>
@@ -364,13 +384,15 @@ export default function ServiceEngineerJobsTable({
 
                 <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
 
+                <th className="whitespace-nowrap px-4 py-3">Booked</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Solved</th>
 
                 <th className="px-4 py-3">Customer</th>
 
                 <th className="px-4 py-3">Nature / Call Type</th>
-
-                <th className="whitespace-nowrap px-4 py-3">Aging</th>
 
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
 
@@ -395,9 +417,17 @@ export default function ServiceEngineerJobsTable({
                     {job.complaintNumber}
                   </td>
 
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                    {formatDateTime(job.complaintDate)}
+                  </td>
+
                   {/* Schedule */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                    {formatDate(job.scheduleDate)}
+                    {formatShortDate(job.scheduleDate)}
+                  </td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                    {formatDateTime(job.solveDate)}
                   </td>
 
                   {/* Customer */}
@@ -450,11 +480,6 @@ export default function ServiceEngineerJobsTable({
                     </p>
                   </td>
 
-                  {/* Aging */}
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    <AgingPill days={job.agingDays} />
-                  </td>
-
                   {/* Status */}
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <StatusBadge
@@ -471,6 +496,7 @@ export default function ServiceEngineerJobsTable({
                         onViewJob={onViewJob}
                         onUpdateStatus={onUpdateStatus}
                         size="sm"
+                        status={job.status}
                       />
                     </div>
                   </td>

@@ -7,7 +7,7 @@ import SparePartsPicker from "./SparePartsPicker";
 import { getJobCategories } from "@/actions/admin";
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
+  "w-full rounded-lg border border-gray-500 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
 
 const EMPTY = {
   targetStatus: "",
@@ -76,9 +76,6 @@ export default function UpdateJobStatusModal({
     if (form.targetStatus === "Hold") {
       if (!form.holdSubStatus)
         return setError("Select a hold reason category.");
-      // if (form.holdPhotos.length < 2 || form.holdPhotos.length > 5) {
-      //   return setError("Attach between 2 and 5 photos for a hold.");
-      // }
       setSubmitting(true);
       try {
         await onHold(job._id, {

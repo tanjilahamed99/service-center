@@ -49,7 +49,7 @@ export const STATUS_TONE = {
   [JOB_STATUS.REGISTERED]: "electric",
   [JOB_STATUS.SERVICE_CENTER_ASSIGNED]: "amber",
   [JOB_STATUS.SERVICE_ENGINEER_ASSIGNED]: "purple",
-  [JOB_STATUS.HOLD]: "slate",
+  [JOB_STATUS.HOLD]: "red",
   [JOB_STATUS.COMPLETED]: "emerald",
   [JOB_STATUS.CANCELLED]: "red",
 };

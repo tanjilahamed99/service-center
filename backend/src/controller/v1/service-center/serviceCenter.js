@@ -350,6 +350,11 @@ exports.updateJobStatus = async (req, res) => {
     }
 
     const previousStatus = job.status;
+
+    if (status === "Completed") {
+      job.solveDate = Date.now();
+    }
+
     job.status = status;
     job.logs.push({
       at: Date.now(),

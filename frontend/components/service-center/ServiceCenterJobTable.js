@@ -22,6 +22,7 @@ import {
   CalendarRange,
 } from "lucide-react";
 import { getJobCategoryOptions } from "@/actions/company";
+import { useAuthStore } from "@/features/Useauthstore";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
@@ -76,23 +77,29 @@ function RowActions({
   onViewLogs,
   onCancelJob,
   size = "md",
+  status,
 }) {
   return (
     <div className="flex items-center gap-1">
-      <ActionButton
-        label="Edit Status"
-        Icon={Pencil}
-        size={size}
-        onClick={() => onEditJob?.(job)}
-      />
-      {canAssign && (
-        <ActionButton
-          label="Assign Job"
-          Icon={UserPlus}
-          tone="electric"
-          size={size}
-          onClick={() => onAssignJob?.([job._id])}
-        />
+      {status !== "Completed" && (
+        <>
+          {" "}
+          <ActionButton
+            label="Edit Status"
+            Icon={Pencil}
+            size={size}
+            onClick={() => onEditJob?.(job)}
+          />
+          {canAssign && (
+            <ActionButton
+              label="Assign Job"
+              Icon={UserPlus}
+              tone="electric"
+              size={size}
+              onClick={() => onAssignJob?.([job._id])}
+            />
+          )}
+        </>
       )}
       <ActionButton
         label="View Logs"
@@ -103,6 +110,9 @@ function RowActions({
     </div>
   );
 }
+
+
+const TIME_ZONE = "Asia/Kolkata";
 
 function formatShortDate(value) {
   if (!value) return "—";
@@ -130,7 +140,7 @@ function formatDateTime(value) {
   });
 }
 
-const TIME_ZONE = "Asia/Kolkata";
+
 
 function formatDuration(from, to) {
   if (!from || !to) return "—";
@@ -350,6 +360,7 @@ export default function ServiceCenterJobsTable({
   const [serviceCenter, setServiceCenter] = useState("");
   const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
   const [dateTo, setDateTo] = useState(""); // "YYYY-MM-DD"
+  const user = useAuthStore((state) => state.user);
 
   const isAllVariant = variant === "all";
 
@@ -674,7 +685,7 @@ export default function ServiceCenterJobsTable({
       {/* Desktop: table (lg and up) */}
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left text-sm">
+          <table className="w-full min-w-300 text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
@@ -764,7 +775,9 @@ export default function ServiceCenterJobsTable({
                     <span
                       className="block max-w-40 truncate"
                       title={job.assignedServiceEngineer?.name}>
-                      {job.assignedServiceEngineer?.name ?? "—"}
+                      {job.assignedServiceEngineer?.name
+                        ? job.assignedServiceEngineer?.name
+                        : (user?.name ?? "—")}
                     </span>
                   </td>
                   {showHoldReasonColumn && (
@@ -802,6 +815,7 @@ export default function ServiceCenterJobsTable({
                         onViewLogs={onViewLogs}
                         onCancelJob={onCancelJob}
                         size="sm"
+                        status={job.status}
                       />
                     </div>
                   </td>
