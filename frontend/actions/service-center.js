@@ -52,3 +52,9 @@ export const getDashboardStats = () =>
 
 export const loginServiceEngineer = (id) =>
   API.post(`/service-center/service-engineer/${id}`);
+
+// services/service-center.js
+export const getMySparePartStock = () =>
+  API.get(`/service-center/getMySparePartStock`);
+export const getMySparePartTransactions = () =>
+  API.get(`/service-center/getMySparePartTransactions`);

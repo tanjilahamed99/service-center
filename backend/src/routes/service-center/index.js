@@ -12,6 +12,8 @@ const {
   changeMyPassword,
   getDashboardStats,
   serviceEngineerLoginByCenter,
+  getMySparePartStock,
+  getMySparePartTransactions,
 } = require("../../controller/v1/service-center/serviceCenter");
 const { serviceCenterCheck } = require("../../middlewares/validatoin");
 
@@ -41,6 +43,13 @@ router.post(
   "/service-engineer/:id",
   serviceCenterCheck,
   serviceEngineerLoginByCenter,
+);
+
+router.get("/getMySparePartStock", serviceCenterCheck, getMySparePartStock);
+router.get(
+  "/getMySparePartTransactions",
+  serviceCenterCheck,
+  getMySparePartTransactions,
 );
 
 module.exports = router;

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   Bell,
+  Wrench,
 } from "lucide-react";
 import { useAuthStore } from "@/features/Useauthstore";
 import { toast } from "sonner";
@@ -24,6 +25,11 @@ const NAV_ITEMS = [
     icon: Users,
   },
   { label: "Profile", href: "/service-center/profile", icon: UserCircle },
+  {
+    label: "Spare Parts",
+    href: "/service-center/spare-parts",
+    icon: Wrench,
+  },
 ];
 
 function isActive(href, pathname) {

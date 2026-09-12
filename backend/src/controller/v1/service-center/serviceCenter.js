@@ -5,6 +5,9 @@ const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const jwt = require("jsonwebtoken");
 
+const SparePartStock = require("../../../models/SparePartStock");
+const SparePartTransaction = require("../../../models/SparePartTransaction");
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_STATUSES = [
   "Registered",
@@ -629,5 +632,73 @@ exports.serviceEngineerLoginByCenter = async (req, res, next) => {
   } catch (error) {
     console.log(error.message);
     next(error);
+  }
+};
+
+// GET /api/service-center/getMySparePartStock
+exports.getMySparePartStock = async (req, res) => {
+  try {
+    const center = await ServiceCenter.findById(req.user._id);
+    if (!center) {
+      return res
+        .status(401)
+        .json({ success: false, message: "service center not found" });
+    }
+
+    const stock = await SparePartStock.find({
+      company: center.company,
+      ownerType: "ServiceCenter",
+      ownerId: center._id,
+    })
+      .populate(
+        "sparePart",
+        "brand product modelNumber spareName category unit status",
+      )
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({ success: true, data: stock });
+  } catch (error) {
+    console.error("getMySparePartStock error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch stock",
+        error: error.message,
+      });
+  }
+};
+
+// GET /api/service-center/getMySparePartTransactions
+// Everything that moved in (allocations from the company) or out (consumption
+// on jobs) of this center's own inventory.
+exports.getMySparePartTransactions = async (req, res) => {
+  try {
+    const center = await ServiceCenter.findById(req.user._id);
+    if (!center) {
+      return res
+        .status(401)
+        .json({ success: false, message: "service center not found" });
+    }
+
+    const transactions = await SparePartTransaction.find({
+      company: center.company,
+      $or: [{ fromId: center._id }, { toId: center._id }],
+    })
+      .populate("sparePart", "spareName brand product")
+      .populate("job", "complaintNumber")
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    return res.status(200).json({ success: true, data: transactions });
+  } catch (error) {
+    console.error("getMySparePartTransactions error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to fetch transactions",
+        error: error.message,
+      });
   }
 };
