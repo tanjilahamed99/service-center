@@ -19,12 +19,12 @@ import { useAuthStore } from "@/features/Useauthstore";
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/service-engineer", icon: LayoutGrid },
   { label: "Jobs", href: "/service-engineer/jobs", icon: ListChecks },
-  { label: "Profile", href: "/service-engineer/profile", icon: UserCircle },
   {
     label: "Spare Parts",
     href: "/service-engineer/spare-parts",
     icon: Wrench,
   },
+  { label: "Profile", href: "/service-engineer/profile", icon: UserCircle },
 ];
 
 function isActive(href, pathname) {
