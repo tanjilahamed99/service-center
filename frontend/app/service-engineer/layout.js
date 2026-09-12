@@ -62,7 +62,7 @@ function SidebarContent({ pathname, onNavigate }) {
             Aceit Technologies (P)ltd
           </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
-            Service Center
+            Service Engineer
           </p>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function ServiceCenterLayout({ children }) {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-semibold text-white">
-                  SC
+                  SE
                 </span>
                 <span className="hidden text-sm font-medium text-navy-900 sm:block">
                   {user?.name ?? "Service Engineer"}

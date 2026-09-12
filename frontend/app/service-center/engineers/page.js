@@ -28,31 +28,6 @@ function StatusBadge({ status }) {
   );
 }
 
-function EngineerCard({ engineer }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-medium text-navy-900">{engineer.name}</p>
-          <p className="text-xs text-slate-400">@{engineer.username}</p>
-        </div>
-        <StatusBadge status={engineer.status} />
-      </div>
-
-      <div className="mt-3 space-y-2 text-sm">
-        <div className="flex items-center gap-2 text-slate-600">
-          <Phone className="h-3.5 w-3.5 text-slate-400" />
-          {engineer.contactNumber || "—"}
-        </div>
-        <div className="flex items-center gap-2 text-slate-600">
-          <IdCard className="h-3.5 w-3.5 text-slate-400" />
-          {engineer.aadharNumber || "—"}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TableSkeleton() {
   return (
     <div className="animate-pulse space-y-3">
@@ -208,63 +183,85 @@ export default function ServiceEngineersPage() {
       {/* Loading */}
       {isLoading && <TableSkeleton />}
 
-      {/* Mobile / tablet cards */}
-      {!isLoading && (
-        <div className="space-y-3 lg:hidden">
-          {filtered.map((eng) => (
-            <EngineerCard key={eng._id} engineer={eng} />
-          ))}
-          {filtered.length === 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400">
-              No service engineers found.
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Desktop table */}
       {!isLoading && (
-        <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-max text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-3 font-medium">S.No.</th>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Contact Number</th>
-                  <th className="px-4 py-3 font-medium">Aadhar Number</th>
-                  <th className="px-4 py-3 font-medium">Username</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    S.No.
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Name
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Contact Number
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Aadhar Number
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Username
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Status
+                  </th>
+
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">
+                    Action
+                  </th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.map((eng, index) => (
                   <tr
                     key={eng._id}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="px-4 py-3.5 text-slate-500">{index + 1}</td>
-                    <td className="px-4 py-3.5 font-medium text-navy-900">
+                    {/* S.No. */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
+                      {index + 1}
+                    </td>
+
+                    {/* Name */}
+                    <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
                       {eng.name}
                     </td>
-                    <td className="px-4 py-3.5 text-slate-600">
+
+                    {/* Contact Number */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {eng.contactNumber || "—"}
                     </td>
-                    <td className="px-4 py-3.5 text-slate-600">
+
+                    {/* Aadhar Number */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {eng.aadharNumber || "—"}
                     </td>
-                    <td className="px-4 py-3.5 text-slate-600">
+
+                    {/* Username */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       @{eng.username}
                     </td>
-                    <td className="px-4 py-3.5">
+
+                    {/* Status */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
                       <StatusBadge status={eng.status} />
                     </td>
-                    <td className="px-4 py-3.5">
+
+                    {/* Action */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
                       <button
                         onClick={() => handleChangeAccount(eng._id, eng.name)}
                         type="button"
-                        title="Login as this company"
-                        className="rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
+                        title="Login as this service engineer"
+                        className="shrink-0 rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
                         <LogIn size={17} strokeWidth={1.75} />
                       </button>
                     </td>
@@ -274,8 +271,8 @@ export default function ServiceEngineersPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
-                      className="px-4 py-10 text-center text-sm text-slate-400">
+                      colSpan={7}
+                      className="whitespace-nowrap px-4 py-10 text-center text-sm text-slate-400">
                       No service engineers found.
                     </td>
                   </tr>

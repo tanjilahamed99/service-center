@@ -330,7 +330,7 @@ export default function ProductsPage() {
                   value={form.brand}
                   onChange={handleChange}
                   placeholder="e.g. Aira"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
+                  className="w-full rounded-lg border border-gray-400 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
                 />
               </div>
 
@@ -344,7 +344,7 @@ export default function ProductsPage() {
                   value={form.productName}
                   onChange={handleChange}
                   placeholder="e.g. Air Conditioner"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
+                  className="w-full rounded-lg border border-gray-400 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
                 />
               </div>
 
@@ -358,7 +358,7 @@ export default function ProductsPage() {
                   value={form.model}
                   onChange={handleChange}
                   placeholder="e.g. AI-1.5T-SPL"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
+                  className="w-full rounded-lg border border-gray-400 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15"
                 />
               </div>
 
@@ -370,7 +370,7 @@ export default function ProductsPage() {
                   name="status"
                   value={form.status}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15">
+                  className="w-full rounded-lg border border-gray-400 bg-white py-2 px-3 text-sm text-navy-900 outline-none focus:border-electric-500 focus:ring-4 focus:ring-electric-500/15">
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>

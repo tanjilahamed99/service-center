@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Phone,
   MapPin,
@@ -10,14 +10,14 @@ import {
   RefreshCw,
   Inbox,
   ScrollText,
+  CalendarRange,
 } from "lucide-react";
 import {
-  CALL_TYPE_OPTIONS,
-  NATURE_OF_WORK_OPTIONS,
   STATUS_TONE,
   JOB_STATUS_LIST,
 } from "../job/Constants";
 import StatusBadge from "../job/Statusbadge";
+import { getJobCategoryOptions } from "@/actions/company";
 
 const TIME_ZONE = "Asia/Kolkata";
 
@@ -50,23 +50,6 @@ function formatDateTime(value) {
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
 
-function AgingPill({ days }) {
-  if (!days && days !== 0)
-    return <span className="text-sm text-slate-400">—</span>;
-  const tone =
-    days >= 7
-      ? "text-red-600 bg-red-50 ring-1 ring-inset ring-red-100"
-      : days >= 3
-        ? "text-amber-600 bg-amber-50 ring-1 ring-inset ring-amber-100"
-        : "text-slate-600 bg-slate-100 ring-1 ring-inset ring-slate-200";
-  return (
-    <span
-      className={`inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${tone}`}>
-      {days} {days === 1 ? "day" : "days"}
-    </span>
-  );
-}
-
 function RowActions({ job, onViewJob, onUpdateStatus, size = "md", status }) {
   const dim = size === "sm" ? "h-8 w-8" : "h-9 w-9";
   return (
@@ -94,104 +77,6 @@ function RowActions({ job, onViewJob, onUpdateStatus, size = "md", status }) {
   );
 }
 
-function JobCard({ job, onViewJob, onUpdateStatus }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-navy-900">
-            {job.complaintNumber}
-          </p>
-
-          <p className="text-xs text-slate-400">
-            {formatShortDate(job.scheduleDate)}
-          </p>
-        </div>
-
-        <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
-      </div>
-
-      {/* Main Content */}
-      <div className="space-y-3 px-4 py-3.5">
-        {/* Customer */}
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            Customer
-          </p>
-
-          <p className="mt-0.5 truncate font-medium text-navy-900">
-            {job.customer?.name || "N/A"}
-          </p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-            {/* Phone */}
-            {job.customer?.mobileNumber && (
-              <a
-                href={`tel:${job.customer.mobileNumber}`}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Call ${job.customer.mobileNumber}`}>
-                <Phone size={13} />
-                {job.customer.mobileNumber}
-              </a>
-            )}
-
-            {/* Address */}
-            {job.customer?.address && (
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  job.customer.address,
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-w-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Open location: ${job.customer.address}`}>
-                <MapPin size={13} className="shrink-0" />
-
-                <span className="truncate">{job.customer.address}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Job Information */}
-        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-          {/* Nature of Work */}
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Nature of Work
-            </p>
-
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.natureOfWork || "—"}
-            </p>
-          </div>
-
-          {/* Call Type */}
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Call Type
-            </p>
-
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.callType || "—"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-1 border-t border-slate-100 bg-slate-50/40 px-4 py-2.5">
-        <RowActions
-          job={job}
-          onViewJob={onViewJob}
-          onUpdateStatus={onUpdateStatus}
-        />
-      </div>
-    </div>
-  );
-}
-
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
@@ -206,10 +91,13 @@ function EmptyState() {
   );
 }
 
-/**
- * Read-mostly table for the Service Engineer role: no bulk-select, no
- * assign/cancel — just filter/search, view, and update status.
- */
+function toISODateInZone(value, timeZone = TIME_ZONE) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-CA", { timeZone }); // en-CA => YYYY-MM-DD
+}
+
 export default function ServiceEngineerJobsTable({
   title,
   subtitle,
@@ -222,35 +110,74 @@ export default function ServiceEngineerJobsTable({
   const [callType, setCallType] = useState("");
   const [nature, setNature] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
+  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
+  const [dateTo, setDateTo] = useState(""); // "YYYY-MM-DD"
+  const [jobSource, setJobSource] = useState("");
+
+  const [jobSourceOptions, setJobSourceOptions] = useState([]);
+  const [callTypeOptions, setCallTypeOptions] = useState([]);
+  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
 
   const filtered = useMemo(() => {
     const rows = jobs.filter((job) => {
-      const searchValue = search.toLowerCase();
-
       const matchesSearch =
         !search ||
-        job.complaintNumber?.toLowerCase().includes(searchValue) ||
-        job.customer?.name?.toLowerCase().includes(searchValue) ||
-        job.customer?.mobileNumber?.includes(search);
+        job?.complaintNumber?.toLowerCase().includes(search.toLowerCase()) ||
+        job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        job?.customer?.mobileNumber?.includes(search);
+      const matchesStatus = !status || job?.status === status;
+      const matchesJobSource = !jobSource || job?.jobSource === jobSource;
+      const matchesCallType = !callType || job?.callType === callType;
+      const matchesNature = !nature || job?.natureOfWork === nature;
 
-      const matchesStatus = !status || job.status === status;
+      const jobDateStr = toISODateInZone(job?.complaintDate);
+      const matchesDateRange =
+        (!dateFrom || jobDateStr >= dateFrom) &&
+        (!dateTo || jobDateStr <= dateTo);
 
-      const matchesCallType = !callType || job.callType === callType;
-
-      const matchesNature = !nature || job.natureOfWork === nature;
-
-      return matchesSearch && matchesStatus && matchesCallType && matchesNature;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesJobSource &&
+        matchesCallType &&
+        matchesNature &&
+        matchesDateRange
+      );
     });
+    return rows.sort((a, b) =>
+      sortDesc
+        ? new Date(b.complaintDate) - new Date(a.complaintDate)
+        : new Date(a.complaintDate) - new Date(b.complaintDate),
+    );
+  }, [
+    jobs,
+    search,
+    status,
+    jobSource,
+    callType,
+    nature,
+    dateFrom,
+    dateTo,
+    sortDesc,
+  ]);
+  const hasActiveFilters =
+    status || callType || nature || search || dateFrom || dateTo;
 
-    return rows.sort((a, b) => {
-      const dateA = a.complaintDate || "";
-      const dateB = b.complaintDate || "";
-
-      return sortDesc ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
-    });
-  }, [jobs, search, status, callType, nature, sortDesc]);
-
-  const hasActiveFilters = status || callType || nature || search;
+  useEffect(() => {
+    Promise.all([
+      getJobCategoryOptions("JobSource"),
+      getJobCategoryOptions("CallType"),
+      getJobCategoryOptions("NatureOfWork"),
+    ])
+      .then(([source, callType, nature]) => {
+        setJobSourceOptions(source.data?.data ?? []);
+        setCallTypeOptions(callType.data?.data ?? []);
+        setNatureOfWorkOptions(nature.data?.data ?? []);
+      })
+      .catch((err) =>
+        console.error("Failed to load job category options", err),
+      );
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -295,7 +222,7 @@ export default function ServiceEngineerJobsTable({
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className={selectClass}>
-              <option value="">All Statuses</option>
+              <option value="">All Status</option>
 
               {JOB_STATUS_LIST.map((opt) => (
                 <option key={opt} value={opt}>
@@ -311,7 +238,20 @@ export default function ServiceEngineerJobsTable({
               className={selectClass}>
               <option value="">All Call Types</option>
 
-              {CALL_TYPE_OPTIONS.map((opt) => (
+              {callTypeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={jobSource}
+              onChange={(e) => setJobSource(e.target.value)}
+              className={selectClass}>
+              <option value="">All Job Source</option>
+
+              {jobSourceOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -325,12 +265,37 @@ export default function ServiceEngineerJobsTable({
               className={`${selectClass} col-span-2 sm:col-span-1`}>
               <option value="">All Nature of Work</option>
 
-              {NATURE_OF_WORK_OPTIONS.map((opt) => (
+              {natureOfWorkOptions?.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
             </select>
+
+            {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
+            <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
+              <CalendarRange
+                className="h-4 w-4 shrink-0 text-slate-400"
+                strokeWidth={1.75}
+              />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                aria-label="From date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+              <span className="text-slate-300">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                aria-label="To date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+            </div>
 
             {/* Sort */}
             <button
@@ -351,8 +316,11 @@ export default function ServiceEngineerJobsTable({
                   setStatus("");
                   setCallType("");
                   setNature("");
+                  setJobSource("");
+                  setDateTo("");
+                  setDateFrom("");
                 }}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
+                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-black text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
                 Clear filters
               </button>
             )}
@@ -360,24 +328,9 @@ export default function ServiceEngineerJobsTable({
         </div>
       </div>
 
-      {/* Mobile / Tablet Cards */}
-      <div className="space-y-3 lg:hidden">
-        {filtered.map((job) => (
-          <JobCard
-            key={job._id}
-            job={job}
-            onViewJob={onViewJob}
-            onUpdateStatus={onUpdateStatus}
-          />
-        ))}
-
-        {filtered.length === 0 && <EmptyState />}
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
@@ -390,9 +343,11 @@ export default function ServiceEngineerJobsTable({
 
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
 
-                <th className="px-4 py-3">Customer</th>
+                <th className="whitespace-nowrap px-4 py-3">Customer</th>
 
-                <th className="px-4 py-3">Nature / Call Type</th>
+                <th className="whitespace-nowrap px-4 py-3">
+                  Nature / Call Type
+                </th>
 
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
 
@@ -417,6 +372,7 @@ export default function ServiceEngineerJobsTable({
                     {job.complaintNumber}
                   </td>
 
+                  {/* Booked */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDateTime(job.complaintDate)}
                   </td>
@@ -426,49 +382,60 @@ export default function ServiceEngineerJobsTable({
                     {formatShortDate(job.scheduleDate)}
                   </td>
 
+                  {/* Solved */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDateTime(job.solveDate)}
                   </td>
 
                   {/* Customer */}
-                  <td className="px-4 py-3.5">
-                    <p
-                      className="max-w-[180px] truncate font-medium text-navy-900"
-                      title={job.customer?.name}>
-                      {job.customer?.name || "N/A"}
-                    </p>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <div className="max-w-[220px]">
+                      <p
+                        className="truncate font-medium text-navy-900"
+                        title={job.customer?.name}>
+                        {job.customer?.name || "N/A"}
+                      </p>
 
-                    {/* Phone */}
-                    {job.customer?.mobileNumber && (
-                      <a
-                        href={`tel:${job.customer.mobileNumber}`}
-                        className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                        title={`Call ${job.customer.mobileNumber}`}>
-                        <Phone size={13} strokeWidth={1.75} />
+                      {/* Phone */}
+                      {job.customer?.mobileNumber && (
+                        <a
+                          href={`tel:${job.customer.mobileNumber}`}
+                          className="mt-1 flex items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Call ${job.customer.mobileNumber}`}>
+                          <Phone
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
 
-                        {job.customer.mobileNumber}
-                      </a>
-                    )}
+                          <span className="whitespace-nowrap">
+                            {job.customer.mobileNumber}
+                          </span>
+                        </a>
+                      )}
 
-                    {/* Address / Google Maps */}
-                    {job.customer?.address && (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          job.customer.address,
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                        title={`Open location: ${job.customer.address}`}>
-                        <MapPin
-                          size={13}
-                          strokeWidth={1.75}
-                          className="shrink-0"
-                        />
+                      {/* Address / Google Maps */}
+                      {job.customer?.address && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            job.customer.address,
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex max-w-[220px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Open location: ${job.customer.address}`}>
+                          <MapPin
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
 
-                        <span className="truncate">{job.customer.address}</span>
-                      </a>
-                    )}
+                          <span className="truncate">
+                            {job.customer.address}
+                          </span>
+                        </a>
+                      )}
+                    </div>
                   </td>
 
                   {/* Nature / Call Type */}

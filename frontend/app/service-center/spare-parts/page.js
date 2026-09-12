@@ -99,52 +99,152 @@ export default function ServiceCenterSparePartsPage() {
           />
 
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-            <table className="w-full text-left text-sm">
+            <div className="w-full overflow-x-auto">
+              <table className="min-w-max text-left text-sm">
+                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-3">Spare Name</th>
+
+                    <th className="whitespace-nowrap px-4 py-3">
+                      Brand / Product
+                    </th>
+
+                    <th className="whitespace-nowrap px-4 py-3">Model No.</th>
+
+                    <th className="whitespace-nowrap px-4 py-3">Category</th>
+
+                    <th className="whitespace-nowrap px-4 py-3">On Hand</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                        Loading…
+                      </td>
+                    </tr>
+                  ) : filteredStock.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                        No spare parts allocated to your center yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStock.map((s) => (
+                      <tr key={s._id} className="border-t border-slate-100">
+                        <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                          {s.sparePart?.spareName}
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                          {s.sparePart?.brand} / {s.sparePart?.product}
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                          {s.sparePart?.modelNumber || "—"}
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                          {s.sparePart?.category || "—"}
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <span
+                            className={`font-semibold ${
+                              s.quantity === 0
+                                ? "text-red-500"
+                                : "text-navy-900"
+                            }`}>
+                            {s.quantity} {s.sparePart?.unit}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "history" && (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-max text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Spare Name</th>
-                  <th className="px-4 py-3">Brand / Product</th>
-                  <th className="px-4 py-3">Model No.</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">On Hand</th>
+                  <th className="whitespace-nowrap px-4 py-3">Date</th>
+
+                  <th className="whitespace-nowrap px-4 py-3">Spare Part</th>
+
+                  <th className="whitespace-nowrap px-4 py-3">Type</th>
+
+                  <th className="whitespace-nowrap px-4 py-3">Quantity</th>
+
+                  <th className="whitespace-nowrap px-4 py-3">Job</th>
+
+                  <th className="whitespace-nowrap px-4 py-3">Note</th>
                 </tr>
               </thead>
+
               <tbody>
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={5}
-                      className="px-4 py-6 text-center text-slate-400">
+                      colSpan={6}
+                      className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
                       Loading…
                     </td>
                   </tr>
-                ) : filteredStock.length === 0 ? (
+                ) : transactions.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
-                      className="px-4 py-6 text-center text-slate-400">
-                      No spare parts allocated to your center yet.
+                      colSpan={6}
+                      className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                      No activity yet.
                     </td>
                   </tr>
                 ) : (
-                  filteredStock.map((s) => (
-                    <tr key={s._id} className="border-t border-slate-100">
-                      <td className="px-4 py-3 font-medium text-navy-900">
-                        {s.sparePart?.spareName}
+                  transactions.map((t) => (
+                    <tr key={t._id} className="border-t border-slate-100">
+                      {/* Date */}
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {new Date(t.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {s.sparePart?.brand} / {s.sparePart?.product}
+
+                      {/* Spare Part */}
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                        {t.sparePart?.spareName}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {s.sparePart?.modelNumber || "—"}
+
+                      {/* Type */}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <TransactionTypeBadge type={t.type} />
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {s.sparePart?.category || "—"}
+
+                      {/* Quantity */}
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {t.toId ? "+" : "-"}
+                        {t.quantity}
                       </td>
-                      <td className="px-4 py-3">
+
+                      {/* Job */}
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {t.job?.complaintNumber || "—"}
+                      </td>
+
+                      {/* Note */}
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                         <span
-                          className={`font-semibold ${s.quantity === 0 ? "text-red-500" : "text-navy-900"}`}>
-                          {s.quantity} {s.sparePart?.unit}
+                          className="block max-w-[220px] truncate"
+                          title={t.note || ""}>
+                          {t.note || "—"}
                         </span>
                       </td>
                     </tr>
@@ -153,70 +253,6 @@ export default function ServiceCenterSparePartsPage() {
               </tbody>
             </table>
           </div>
-        </>
-      )}
-
-      {tab === "history" && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Spare Part</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Quantity</th>
-                <th className="px-4 py-3">Job</th>
-                <th className="px-4 py-3">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-6 text-center text-slate-400">
-                    Loading…
-                  </td>
-                </tr>
-              ) : transactions.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-6 text-center text-slate-400">
-                    No activity yet.
-                  </td>
-                </tr>
-              ) : (
-                transactions.map((t) => (
-                  <tr key={t._id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-slate-600">
-                      {new Date(t.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-navy-900">
-                      {t.sparePart?.spareName}
-                    </td>
-                    <td className="px-4 py-3">
-                      <TransactionTypeBadge type={t.type} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {t.toId ? "+" : "-"}
-                      {t.quantity}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {t.job?.complaintNumber || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      <span
-                        className="block max-w-[220px] truncate"
-                        title={t.note || ""}>
-                        {t.note || "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       )}
     </div>

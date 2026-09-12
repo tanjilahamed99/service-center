@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  CALL_TYPE_OPTIONS,
-  NATURE_OF_WORK_OPTIONS,
   STATUS_TONE,
   JOB_STATUS,
   JOB_STATUS_LIST,
@@ -39,7 +37,7 @@ const BULK_SELECTABLE_STATUSES = [
 const CANCELLABLE_STATUSES = [JOB_STATUS.REGISTERED];
 
 const selectClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
 
 function computeAgingDays(complaintDate, status) {
   if (!complaintDate || status === "Completed" || status === "Cancelled")
@@ -111,7 +109,6 @@ function RowActions({
   );
 }
 
-
 const TIME_ZONE = "Asia/Kolkata";
 
 function formatShortDate(value) {
@@ -140,30 +137,6 @@ function formatDateTime(value) {
   });
 }
 
-
-
-function formatDuration(from, to) {
-  if (!from || !to) return "—";
-  const start = new Date(from);
-  const end = new Date(to);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
-
-  let diffMs = end - start;
-  if (diffMs < 0) diffMs = 0; // guards against bad data (solveDate before complaintDate)
-
-  const totalMinutes = Math.floor(diffMs / (1000 * 60));
-  const days = Math.floor(totalMinutes / (60 * 24));
-  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-  const minutes = totalMinutes % 60;
-
-  const parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
-
-  return parts.join(" ");
-}
-
 // Converts any date value to a "YYYY-MM-DD" string in the given timezone —
 // deliberately the same format <input type="date"> produces, so date-range
 // filtering is a plain string comparison instead of Date arithmetic (which
@@ -173,148 +146,6 @@ function toISODateInZone(value, timeZone = TIME_ZONE) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-CA", { timeZone }); // en-CA => YYYY-MM-DD
-}
-
-/**
- * Mobile/tablet card, shown below the `lg` breakpoint instead of a table row so long
- * text (customer names, reasons) can wrap without squeezing columns.
- */
-function JobCard({
-  job,
-  showCheckbox,
-  checked,
-  onToggle,
-  selectable,
-  showHoldReason,
-  showCancelReason,
-  actionProps,
-}) {
-  const agingDays = computeAgingDays(job.complaintDate, job.status);
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      {/* Header strip */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-navy-900">
-              {job.complaintNumber}
-            </p>
-            <p className="text-xs text-slate-400">
-              Booked {formatShortDate(job.complaintDate)}
-            </p>
-          </div>
-        </div>
-        <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
-      </div>
-
-      {/* Body */}
-      <div className="space-y-3 px-4 py-3.5">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            Customer
-          </p>
-
-          <p className="mt-0.5 truncate font-medium text-navy-900">
-            {job.customer?.name || "N/A"}
-          </p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-            {/* Phone */}
-            {job.customer?.mobileNumber && (
-              <a
-                href={`tel:${job.customer.mobileNumber}`}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Call ${job.customer.mobileNumber}`}>
-                <Phone size={13} />
-                {job.customer.mobileNumber}
-              </a>
-            )}
-
-            {/* Address */}
-            {job.customer?.address && (
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  job.customer.address,
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-w-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Open location: ${job.customer.address}`}>
-                <MapPin size={13} className="shrink-0" />
-
-                <span className="truncate">{job.customer.address}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Nature / Call Type
-            </p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.natureOfWork || "—"}
-            </p>
-            <p className="text-xs text-slate-500">{job.callType}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Assigned Engineer
-            </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.assignedServiceEngineer?.name ?? "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Schedule
-            </p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {formatShortDate(job.scheduleDate)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Solved
-            </p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.solveDate
-                ? formatShortDate(job.solveDate)
-                : "Not solved yet"}
-            </p>
-          </div>
-        </div>
-
-        {showHoldReason && job.holdReason && (
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Reason for Hold
-            </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.holdReason}
-            </p>
-          </div>
-        )}
-        {showCancelReason && job.cancelReason && (
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Cancellation Reason
-            </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job.cancelReason}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer actions */}
-      <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/40 px-4 py-2.5">
-        <RowActions job={job} {...actionProps} />
-      </div>
-    </div>
-  );
 }
 
 function EmptyState() {
@@ -354,7 +185,6 @@ export default function ServiceCenterJobsTable({
   const [callType, setCallType] = useState("");
   const [nature, setNature] = useState("");
   const [serviceEngineer, setServiceEngineer] = useState("");
-  const [selected, setSelected] = useState([]);
   const [sortDesc, setSortDesc] = useState(true);
   const [jobSource, setJobSource] = useState("");
   const [serviceCenter, setServiceCenter] = useState("");
@@ -368,11 +198,7 @@ export default function ServiceCenterJobsTable({
   const showAssignAction = isAllVariant
     ? null
     : variant === "registered" || variant === "serviceCenter";
-  const showBulkAssign = isAllVariant
-    ? true
-    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(
-        variant,
-      );
+
   const showServiceEngineerFilter =
     isAllVariant || ["serviceEngineer", "hold"].includes(variant);
   const showHoldReasonColumn = isAllVariant || variant === "hold";
@@ -389,9 +215,7 @@ export default function ServiceCenterJobsTable({
       ? CANCELLABLE_STATUSES.includes(job.status)
       : showCancelAction;
   }
-  function canSelectRow(job) {
-    return isAllVariant ? BULK_SELECTABLE_STATUSES.includes(job.status) : true;
-  }
+
 
   const filtered = useMemo(() => {
     const rows = jobs.filter((job) => {
@@ -444,9 +268,6 @@ export default function ServiceCenterJobsTable({
     sortDesc,
   ]);
 
-  const selectableRows = filtered.filter(canSelectRow);
-  const allSelected =
-    selectableRows.length > 0 && selected.length === selectableRows.length;
   const hasActiveFilters =
     search ||
     status ||
@@ -478,11 +299,6 @@ export default function ServiceCenterJobsTable({
       );
   }, []);
 
-  function toggleOne(id) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
 
   function clearFilters() {
     setSearch("");
@@ -617,7 +433,7 @@ export default function ServiceCenterJobsTable({
             <button
               type="button"
               onClick={() => setSortDesc((v) => !v)}
-              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
+              className="col-span-2 flex items-center justify-center gap-1.5 text-black rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -634,58 +450,9 @@ export default function ServiceCenterJobsTable({
         </div>
       </div>
 
-      {/* Bulk assign bar */}
-      {showBulkAssign && selected.length > 0 && (
-        <div className="flex flex-col gap-2.5 rounded-xl border border-electric-400/40 bg-electric-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-navy-900">
-            {selected.length} job{selected.length > 1 ? "s" : ""} selected
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSelected([])}
-              className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => onAssignJob?.(selected)}
-              className="rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110">
-              Bulk Assign
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile / tablet: stacked cards (below lg) */}
-      <div className="space-y-3 lg:hidden">
-        {filtered.map((job) => (
-          <JobCard
-            key={job._id}
-            job={job}
-            showCheckbox={showBulkAssign}
-            checked={selected.includes(job._id)}
-            onToggle={() => toggleOne(job._id)}
-            selectable={canSelectRow(job)}
-            showHoldReason={showHoldReasonColumn}
-            showCancelReason={showCancelReasonColumn}
-            actionProps={{
-              canAssign: canAssignRow(job),
-              canCancel: canCancelRow(job),
-              onEditJob,
-              onAssignJob,
-              onViewLogs,
-              onCancelJob,
-            }}
-          />
-        ))}
-        {filtered.length === 0 && <EmptyState />}
-      </div>
-
-      {/* Desktop: table (lg and up) */}
-      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-300 text-left text-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
@@ -693,95 +460,136 @@ export default function ServiceCenterJobsTable({
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Nature / Call Type</th>
-                <th className="px-4 py-3">Assigned Engineer</th>
+                <th className="whitespace-nowrap px-4 py-3">Customer</th>
+                <th className="whitespace-nowrap px-4 py-3">
+                  Nature / Call Type
+                </th>
+                <th className="whitespace-nowrap px-4 py-3">
+                  Assigned Engineer
+                </th>
+
                 {showHoldReasonColumn && (
-                  <th className="px-4 py-3">Reason for Hold</th>
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Reason for Hold
+                  </th>
                 )}
+
                 {showCancelReasonColumn && (
-                  <th className="px-4 py-3">Cancellation Reason</th>
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Cancellation Reason
+                  </th>
                 )}
+
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
+
                 <th className="whitespace-nowrap px-4 py-3 text-right">
                   Actions
                 </th>
               </tr>
             </thead>
+
             <tbody>
               {filtered.map((job, idx) => (
                 <tr
                   key={job._id}
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                  {/* S.No. */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
                     {idx + 1}
                   </td>
+
+                  {/* Complaint Number */}
                   <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
                     {job.complaintNumber}
                   </td>
+
+                  {/* Booked */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDateTime(job.complaintDate)}
                   </td>
+
+                  {/* Schedule */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatShortDate(job.scheduleDate)}
                   </td>
+
+                  {/* Solved */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDateTime(job.solveDate)}
                   </td>
-                  <td className="px-4 py-3.5">
-                    <p
-                      className="max-w-[180px] truncate font-medium text-navy-900"
-                      title={job.customer?.name}>
-                      {job.customer?.name || "N/A"}
-                    </p>
 
-                    {/* Phone */}
-                    {job.customer?.mobileNumber && (
-                      <a
-                        href={`tel:${job.customer.mobileNumber}`}
-                        className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                        title={`Call ${job.customer.mobileNumber}`}>
-                        <Phone size={13} strokeWidth={1.75} />
+                  {/* Customer */}
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <div className="max-w-[220px]">
+                      <p
+                        className="truncate font-medium text-navy-900"
+                        title={job.customer?.name}>
+                        {job.customer?.name || "N/A"}
+                      </p>
 
-                        {job.customer.mobileNumber}
-                      </a>
-                    )}
+                      {/* Phone */}
+                      {job.customer?.mobileNumber && (
+                        <a
+                          href={`tel:${job.customer.mobileNumber}`}
+                          className="mt-1 flex items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Call ${job.customer.mobileNumber}`}>
+                          <Phone
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
 
-                    {/* Address / Google Maps */}
-                    {job.customer?.address && (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          job.customer.address,
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                        title={`Open location: ${job.customer.address}`}>
-                        <MapPin
-                          size={13}
-                          strokeWidth={1.75}
-                          className="shrink-0"
-                        />
+                          <span className="whitespace-nowrap">
+                            {job.customer.mobileNumber}
+                          </span>
+                        </a>
+                      )}
 
-                        <span className="truncate">{job.customer.address}</span>
-                      </a>
-                    )}
+                      {/* Address / Google Maps */}
+                      {job.customer?.address && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            job.customer.address,
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex max-w-[220px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                          title={`Open location: ${job.customer.address}`}>
+                          <MapPin
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
+
+                          <span className="truncate">
+                            {job.customer.address}
+                          </span>
+                        </a>
+                      )}
+                    </div>
                   </td>
+
+                  {/* Nature / Call Type */}
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <p className="text-navy-900">{job.natureOfWork}</p>
+
                     <p className="text-xs text-slate-500">{job.callType}</p>
                   </td>
-                  <td className="px-4 py-3.5 text-slate-600">
+
+                  {/* Assigned Engineer */}
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     <span
                       className="block max-w-40 truncate"
                       title={job.assignedServiceEngineer?.name}>
                       {job.assignedServiceEngineer?.name
-                        ? job.assignedServiceEngineer?.name
+                        ? job.assignedServiceEngineer.name
                         : (user?.name ?? "—")}
                     </span>
                   </td>
+
+                  {/* Hold Reason */}
                   {showHoldReasonColumn && (
-                    <td className="px-4 py-3.5 text-slate-600">
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       <span
                         className="block max-w-45 truncate"
                         title={job.holdReason ?? ""}>
@@ -789,8 +597,10 @@ export default function ServiceCenterJobsTable({
                       </span>
                     </td>
                   )}
+
+                  {/* Cancellation Reason */}
                   {showCancelReasonColumn && (
-                    <td className="px-4 py-3.5 text-slate-600">
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       <span
                         className="block max-w-45 truncate"
                         title={job.cancelReason ?? ""}>
@@ -798,12 +608,16 @@ export default function ServiceCenterJobsTable({
                       </span>
                     </td>
                   )}
+
+                  {/* Status */}
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <StatusBadge
                       status={job.status}
                       tone={STATUS_TONE[job.status]}
                     />
                   </td>
+
+                  {/* Actions */}
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <div className="flex items-center justify-end">
                       <RowActions
@@ -823,6 +637,7 @@ export default function ServiceCenterJobsTable({
               ))}
             </tbody>
           </table>
+
           {filtered.length === 0 && (
             <div className="px-4 py-16">
               <EmptyState />

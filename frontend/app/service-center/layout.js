@@ -24,12 +24,12 @@ const NAV_ITEMS = [
     href: "/service-center/engineers",
     icon: Users,
   },
-  { label: "Profile", href: "/service-center/profile", icon: UserCircle },
   {
     label: "Spare Parts",
     href: "/service-center/spare-parts",
     icon: Wrench,
   },
+  { label: "Profile", href: "/service-center/profile", icon: UserCircle },
 ];
 
 function isActive(href, pathname) {
@@ -162,12 +162,6 @@ export default function ServiceCenterLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-              aria-label="Notifications">
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-400" />
-            </button>
             <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-semibold text-white">
                 {user?.name?.charAt(0) ?? "SC"}
