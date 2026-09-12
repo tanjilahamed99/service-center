@@ -9,7 +9,6 @@ const JOB_STATUS = [
   "Cancelled",
 ];
 
-
 const ConsumedPartSchema = new mongoose.Schema(
   {
     sparePart: { type: mongoose.Schema.Types.ObjectId, ref: "SparePart" }, // NEW — links to real inventory
@@ -51,7 +50,7 @@ const JobSchema = new mongoose.Schema(
     complaintDate: { type: Date, default: Date.now },
 
     // Job details (Create Job form)
-    jobSource: { type: String,  required: true },
+    jobSource: { type: String, required: true },
     callType: { type: String, required: true },
     natureOfWork: { type: String, required: true },
     approxCost: { type: Number, min: 0 },
@@ -101,6 +100,7 @@ const JobSchema = new mongoose.Schema(
     closurePhotos: [{ type: String }],
     customerSignature: { type: String }, // stored image/data URL path
     closureOtpVerified: { type: Boolean, default: false },
+    remark: { type: String, default: "" },
 
     // Cancellation
     cancelReason: { type: String, trim: true },

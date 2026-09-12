@@ -84,87 +84,116 @@ export default function SparePartsPage() {
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Spare Name</th>
-              <th className="px-4 py-3">Brand / Product</th>
-              <th className="px-4 py-3">Model No.</th>
-              <th className="px-4 py-3">In Central Store</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-max text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  Loading…
-                </td>
+                <th className="whitespace-nowrap px-4 py-3">Spare Name</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Brand / Product</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Model No.</th>
+
+                <th className="whitespace-nowrap px-4 py-3">
+                  In Central Store
+                </th>
+
+                <th className="whitespace-nowrap px-4 py-3">Status</th>
+
+                <th className="whitespace-nowrap px-4 py-3 text-right">
+                  Actions
+                </th>
               </tr>
-            ) : parts.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  No spare parts yet.
-                </td>
-              </tr>
-            ) : (
-              parts.map((p) => (
-                <tr key={p._id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium text-navy-900">
-                    {p.spareName}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {p.brand} / {p.product}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {p.modelNumber || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`font-semibold ${p.companyStock === 0 ? "text-red-500" : "text-navy-900"}`}>
-                      {p.companyStock} {p.unit}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        p.status === "Active"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-500"
-                      }`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setRestockTarget(p)}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                        Restock
-                      </button>
-                      <button
-                        onClick={() => setAllocateTarget(p)}
-                        className="rounded-lg border border-electric-400/40 bg-electric-500/10 px-3 py-1.5 text-xs font-semibold text-electric-500 hover:bg-electric-500/15">
-                        Allocate
-                      </button>
-                      <button
-                        disabled={deletingId === p._id}
-                        onClick={() => handleDelete(p)}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60">
-                        Delete
-                      </button>
-                    </div>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                    Loading…
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : parts.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                    No spare parts yet.
+                  </td>
+                </tr>
+              ) : (
+                parts.map((p) => (
+                  <tr key={p._id} className="border-t border-slate-100">
+                    {/* Spare Name */}
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                      {p.spareName}
+                    </td>
+
+                    {/* Brand / Product */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {p.brand} / {p.product}
+                    </td>
+
+                    {/* Model Number */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {p.modelNumber || "—"}
+                    </td>
+
+                    {/* Stock */}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`font-semibold ${
+                          p.companyStock === 0
+                            ? "text-red-500"
+                            : "text-navy-900"
+                        }`}>
+                        {p.companyStock} {p.unit}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          p.status === "Active"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-slate-100 text-slate-500"
+                        }`}>
+                        {p.status}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setRestockTarget(p)}
+                          className="whitespace-nowrap rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                          Restock
+                        </button>
+
+                        <button
+                          onClick={() => setAllocateTarget(p)}
+                          className="whitespace-nowrap rounded-lg border border-electric-400/40 bg-electric-500/10 px-3 py-1.5 text-xs font-semibold text-electric-500 hover:bg-electric-500/15">
+                          Allocate
+                        </button>
+
+                        <button
+                          disabled={deletingId === p._id}
+                          onClick={() => handleDelete(p)}
+                          className="whitespace-nowrap rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60">
+                          {deletingId === p._id ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <RestockModal

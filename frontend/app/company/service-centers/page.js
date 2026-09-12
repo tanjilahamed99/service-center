@@ -116,90 +116,146 @@ export default function ServiceCentersPage() {
 
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Contact Person</th>
-              <th className="px-4 py-3">Contact Number</th>
-              <th className="px-4 py-3">Username</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+<div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+  <div className="w-full overflow-x-auto">
+    <table className="min-w-max text-left text-sm">
+      <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th className="whitespace-nowrap px-4 py-3">
+            Name
+          </th>
+
+          <th className="whitespace-nowrap px-4 py-3">
+            Contact Person
+          </th>
+
+          <th className="whitespace-nowrap px-4 py-3">
+            Contact Number
+          </th>
+
+          <th className="whitespace-nowrap px-4 py-3">
+            Username
+          </th>
+
+          <th className="whitespace-nowrap px-4 py-3">
+            Status
+          </th>
+
+          <th className="whitespace-nowrap px-4 py-3 text-right">
+            Actions
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {loading ? (
+          <tr>
+            <td
+              colSpan={6}
+              className="whitespace-nowrap px-4 py-6 text-center text-slate-400"
+            >
+              Loading…
+            </td>
+          </tr>
+        ) : centers.length === 0 ? (
+          <tr>
+            <td
+              colSpan={6}
+              className="whitespace-nowrap px-4 py-6 text-center text-slate-400"
+            >
+              No service centers yet.
+            </td>
+          </tr>
+        ) : (
+          centers.map((c) => (
+            <tr
+              key={c._id}
+              className="border-t border-slate-100"
+            >
+              {/* Name */}
+              <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                {c.name}
+              </td>
+
+              {/* Contact Person */}
+              <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                {c.contactPerson}
+              </td>
+
+              {/* Contact Number */}
+              <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                {c.contactNumber || "—"}
+              </td>
+
+              {/* Username */}
+              <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                {c.username}
+              </td>
+
+              {/* Status */}
+              <td className="whitespace-nowrap px-4 py-3">
+                <span
+                  className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    c.status === "Active"
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-red-100 text-red-500"
+                  }`}
+                >
+                  {c.status}
+                </span>
+              </td>
+
+              {/* Actions */}
+              <td className="whitespace-nowrap px-4 py-3">
+                <div className="flex items-center justify-end gap-2">
+                  {/* Login */}
+                  <button
+                    onClick={() =>
+                      handleChangeAccount(c._id, c.name)
+                    }
+                    type="button"
+                    title="Login as this service center"
+                    className="shrink-0 rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500"
+                  >
+                    <LogIn
+                      size={17}
+                      strokeWidth={1.75}
+                    />
+                  </button>
+
+                  {/* Edit */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/company/service-centers/${c._id}/edit`
+                      )
+                    }
+                    className="shrink-0 cursor-pointer whitespace-nowrap rounded-lg border border-gray-500 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    disabled={deletingId === c._id}
+                    onClick={() => handleDelete(c)}
+                    className="shrink-0 whitespace-nowrap rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    {deletingId === c._id
+                      ? "Deleting…"
+                      : "Delete"}
+                  </button>
+                </div>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  Loading…
-                </td>
-              </tr>
-            ) : centers.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  No service centers yet.
-                </td>
-              </tr>
-            ) : (
-              centers.map((c) => (
-                <tr key={c._id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium text-navy-900">
-                    {c.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {c.contactPerson}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {c.contactNumber || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{c.username}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        c.status === "Active"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-red-100 text-red-500"
-                      }`}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => handleChangeAccount(c._id, c.name)}
-                        type="button"
-                        title="Login as this company"
-                        className="rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
-                        <LogIn size={17} strokeWidth={1.75} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(`/company/service-centers/${c._id}/edit`)
-                        }
-                        className="rounded-lg cursor-pointer border border-gray-500 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingId === c._id}
-                        onClick={() => handleDelete(c)}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60">
-                        {deletingId === c._id ? "Deleting…" : "Delete"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
     </div>
   );
 }

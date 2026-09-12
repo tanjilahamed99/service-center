@@ -14,6 +14,8 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import UploadImage from "@/components/UploadImage";
+import StatusBadge from "@/components/job/Statusbadge";
+import { STATUS_TONE } from "@/components/job/Constants";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -45,7 +47,7 @@ function Field({ label, className = "", children }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 disabled:text-slate-400";
+  "w-full rounded-lg border border-gray-400 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 disabled:text-slate-400";
 
 export default function CreateJobPage() {
   const [customerSearch, setCustomerSearch] = useState("");
@@ -81,6 +83,7 @@ export default function CreateJobPage() {
     scheduleDate: "",
     natureOfWork: "",
     file: null,
+    remark: "",
   });
 
   // ---- Load service centers once, for the "Assign To" dropdown ----
@@ -222,6 +225,7 @@ export default function CreateJobPage() {
         warrantyTo: form.warrantyTo || undefined,
         assignedServiceCenter: form.assignTo || undefined,
         scheduleDate: form.scheduleDate || undefined,
+        remark: form.remark || "",
       };
       const { data } = await createJob(payload);
 
@@ -350,7 +354,7 @@ export default function CreateJobPage() {
         )}
 
         {customer && showPreviousJobs && (
-          <div className="sm:col-span-2 overflow-hidden rounded-lg border border-slate-200">
+          <div className="sm:col-span-2 overflow-x-auto rounded-lg border border-slate-200">
             {loadingPreviousJobs ? (
               <p className="px-4 py-3 text-sm text-slate-400">Loading…</p>
             ) : previousJobs.length === 0 ? (
@@ -358,28 +362,46 @@ export default function CreateJobPage() {
                 No previous jobs for this customer.
               </p>
             ) : (
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-max text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-4 py-2">Complaint No.</th>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2">Product</th>
-                    <th className="px-4 py-2">Status</th>
+                    <th className="whitespace-nowrap px-4 py-2">
+                      Complaint No.
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-2">Date</th>
+                    <th className="whitespace-nowrap px-4 py-2">Product</th>
+                    <th className="whitespace-nowrap px-4 py-2">
+                      Corrective action
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-2">Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {previousJobs.map((job) => (
                     <tr key={job._id} className="border-t border-slate-100">
-                      <td className="px-4 py-2 font-medium text-navy-900">
+                      <td className="whitespace-nowrap px-4 py-2 font-medium text-navy-900">
                         {job.complaintNumber}
                       </td>
-                      <td className="px-4 py-2 text-slate-600">
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-600">
                         {new Date(job.complaintDate).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-2 text-slate-600">
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-600">
                         {job.product}
                       </td>
-                      <td className="px-4 py-2 text-slate-600">{job.status}</td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-600">
+                        {job?.correctiveActionTaken || "-----"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-2 text-slate-600">
+                        <StatusBadge
+                          status={job.status}
+                          tone={STATUS_TONE[job.status]}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -557,6 +579,13 @@ export default function CreateJobPage() {
             value={form.scheduleDate}
             onChange={(e) => update("scheduleDate", e.target.value)}
             className={inputClass}
+          />
+        </Field>
+        <Field label="Remark" className="col-span-2">
+          <textarea
+            className={`${inputClass} h-24`}
+            value={form.remark}
+            onChange={(e) => update("remark", e.target.value)}
           />
         </Field>
         <UploadImage

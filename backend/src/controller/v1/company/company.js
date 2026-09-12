@@ -40,6 +40,7 @@ exports.createJob = async (req, res) => {
       assignedServiceCenter,
       scheduleDate,
       uploadFile,
+      remark,
     } = req.body;
 
     if (!customer || !jobSource || !callType || !natureOfWork) {
@@ -81,6 +82,7 @@ exports.createJob = async (req, res) => {
       assignedAt: assignedServiceCenter ? Date.now() : undefined,
       status: assignedServiceCenter ? "Service Center Assigned" : "Registered",
       uploadFile,
+      remark: remark || "",
       logs: [
         {
           at: Date.now(),
@@ -541,8 +543,6 @@ exports.searchCustomers = async (req, res) => {
       ],
     }).limit(10);
 
-    console.log(customers);
-
     return res.status(200).json({ success: true, data: customers });
   } catch (error) {
     console.error("searchCustomers error:", error);
@@ -611,7 +611,9 @@ exports.getCustomerPreviousJobs = async (req, res) => {
     }
 
     const jobs = await Job.find({ company, customer: customerId })
-      .select("complaintNumber complaintDate product status")
+      .select(
+        "complaintNumber complaintDate product status correctiveActionTaken",
+      )
       .sort({ complaintDate: -1 });
 
     return res.status(200).json({ success: true, data: jobs });

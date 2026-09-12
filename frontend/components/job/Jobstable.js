@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  CALL_TYPE_OPTIONS,
-  NATURE_OF_WORK_OPTIONS,
-  STATUS_TONE,
-  JOB_STATUS,
-  JOB_STATUS_LIST,
-} from "./Constants";
+import { STATUS_TONE, JOB_STATUS, JOB_STATUS_LIST } from "./Constants";
 import StatusBadge from "./Statusbadge";
 import {
   Search,
@@ -25,7 +19,10 @@ import { getJobCategoryOptions } from "@/actions/company";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
-const ASSIGNABLE_STATUSES = [JOB_STATUS.REGISTERED, JOB_STATUS.SERVICE_CENTER_ASSIGNED];
+const ASSIGNABLE_STATUSES = [
+  JOB_STATUS.REGISTERED,
+  JOB_STATUS.SERVICE_CENTER_ASSIGNED,
+];
 const BULK_SELECTABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
@@ -113,14 +110,22 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}
-    >
+      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}>
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </button>
   );
 }
 
-function RowActions({ job, canAssign, canCancel, onEditJob, onAssignJob, onViewLogs, onCancelJob, size = "md" }) {
+function RowActions({
+  job,
+  canAssign,
+  canCancel,
+  onEditJob,
+  onAssignJob,
+  onViewLogs,
+  onCancelJob,
+  size = "md",
+}) {
   return (
     <div className="flex items-center gap-1">
       {canAssign && (
@@ -132,119 +137,21 @@ function RowActions({ job, canAssign, canCancel, onEditJob, onAssignJob, onViewL
           onClick={() => onAssignJob?.([job._id])}
         />
       )}
-      <ActionButton label="View Logs" Icon={ScrollText} size={size} onClick={() => onViewLogs?.(job)} />
+      <ActionButton
+        label="View Logs"
+        Icon={ScrollText}
+        size={size}
+        onClick={() => onViewLogs?.(job)}
+      />
       {canCancel && (
-        <ActionButton label="Cancel Job" Icon={Ban} tone="red" size={size} onClick={() => onCancelJob?.(job)} />
+        <ActionButton
+          label="Cancel Job"
+          Icon={Ban}
+          tone="red"
+          size={size}
+          onClick={() => onCancelJob?.(job)}
+        />
       )}
-    </div>
-  );
-}
-
-/**
- * Mobile/tablet card, shown below the `lg` breakpoint instead of a table row so long
- * text (customer names, service center names, reasons) can wrap without squeezing columns.
- */
-function JobCard({ job, showHoldReason, showCancelReason, actionProps }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      {/* Header strip */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-navy-900">{job.complaintNumber}</p>
-            <p className="text-xs text-slate-400">Booked {formatShortDate(job.complaintDate)}</p>
-          </div>
-        </div>
-        <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
-      </div>
-
-      {/* Body */}
-      <div className="space-y-3 px-4 py-3.5">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Customer</p>
-
-          <p className="mt-0.5 truncate font-medium text-navy-900">{job.customer?.name || "N/A"}</p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-            {job.customer?.mobileNumber && (
-              <a
-                href={`tel:${job.customer.mobileNumber}`}
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Call ${job.customer.mobileNumber}`}
-              >
-                <Phone size={13} />
-                {job.customer.mobileNumber}
-              </a>
-            )}
-
-            {job.customer?.address && (
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customer.address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-w-0 items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                title={`Open location: ${job.customer.address}`}
-              >
-                <MapPin size={13} className="shrink-0" />
-                <span className="truncate">{job.customer.address}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Nature / Call Type
-            </p>
-            <p className="mt-0.5 text-sm text-navy-900">{job.natureOfWork || "—"}</p>
-            <p className="text-xs text-slate-500">{job.callType}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Assigned To</p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">
-              {job?.assignedServiceCenter?.name ?? "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Schedule</p>
-            <p className="mt-0.5 text-sm text-navy-900">{formatShortDate(job.scheduleDate)}</p>
-          </div>
-
-          <div className="col-span-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">TAT</p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.solveDate ? formatDuration(job.complaintDate, job.solveDate) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Solved</p>
-            <p className="mt-0.5 text-sm text-navy-900">
-              {job.solveDate ? formatShortDate(job.solveDate) : "Not solved yet"}
-            </p>
-          </div>
-        </div>
-
-        {showHoldReason && job.holdReason && (
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Reason for Hold</p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">{job.holdReason}</p>
-          </div>
-        )}
-        {showCancelReason && job.cancelReason && (
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              Cancellation Reason
-            </p>
-            <p className="mt-0.5 break-words text-sm text-navy-900">{job.cancelReason}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer actions */}
-      <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/40 px-4 py-2.5">
-        <RowActions job={job} {...actionProps} />
-      </div>
     </div>
   );
 }
@@ -253,8 +160,12 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
       <Inbox className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
-      <p className="text-sm font-medium text-slate-500">No jobs match the current filters</p>
-      <p className="text-xs text-slate-400">Try clearing a filter or searching a different term.</p>
+      <p className="text-sm font-medium text-slate-500">
+        No jobs match the current filters
+      </p>
+      <p className="text-xs text-slate-400">
+        Try clearing a filter or searching a different term.
+      </p>
     </div>
   );
 }
@@ -290,21 +201,32 @@ export default function JobsTable({
   const isAllVariant = variant === "all";
 
   const showStatusFilter = isAllVariant;
-  const showAssignAction = isAllVariant ? null : variant === "registered" || variant === "serviceCenter";
+  const showAssignAction = isAllVariant
+    ? null
+    : variant === "registered" || variant === "serviceCenter";
   const showBulkAssign = isAllVariant
     ? true
-    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(variant);
-  const showServiceCenterFilter = isAllVariant || ["serviceCenter", "serviceEngineer", "hold"].includes(variant);
-  const showServiceEngineerFilter = isAllVariant || ["serviceEngineer", "hold"].includes(variant);
+    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(
+        variant,
+      );
+  const showServiceCenterFilter =
+    isAllVariant ||
+    ["serviceCenter", "serviceEngineer", "hold"].includes(variant);
+  const showServiceEngineerFilter =
+    isAllVariant || ["serviceEngineer", "hold"].includes(variant);
   const showHoldReasonColumn = isAllVariant || variant === "hold";
   const showCancelReasonColumn = isAllVariant || variant === "cancelled";
   const showCancelAction = isAllVariant ? null : variant === "registered";
 
   function canAssignRow(job) {
-    return isAllVariant ? ASSIGNABLE_STATUSES.includes(job.status) : showAssignAction;
+    return isAllVariant
+      ? ASSIGNABLE_STATUSES.includes(job.status)
+      : showAssignAction;
   }
   function canCancelRow(job) {
-    return isAllVariant ? CANCELLABLE_STATUSES.includes(job.status) : showCancelAction;
+    return isAllVariant
+      ? CANCELLABLE_STATUSES.includes(job.status)
+      : showCancelAction;
   }
   function canSelectRow(job) {
     return isAllVariant ? BULK_SELECTABLE_STATUSES.includes(job.status) : true;
@@ -321,11 +243,15 @@ export default function JobsTable({
       const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
       const matchesNature = !nature || job?.natureOfWork === nature;
-      const matchesCenter = !serviceCenter || job?.assignedServiceCenter === serviceCenter;
-      const matchesEngineer = !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+      const matchesCenter =
+        !serviceCenter || job?.assignedServiceCenter === serviceCenter;
+      const matchesEngineer =
+        !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
 
       const jobDateStr = toISODateInZone(job?.complaintDate);
-      const matchesDateRange = (!dateFrom || jobDateStr >= dateFrom) && (!dateTo || jobDateStr <= dateTo);
+      const matchesDateRange =
+        (!dateFrom || jobDateStr >= dateFrom) &&
+        (!dateTo || jobDateStr <= dateTo);
 
       return (
         matchesSearch &&
@@ -339,7 +265,9 @@ export default function JobsTable({
       );
     });
     return rows.sort((a, b) =>
-      sortDesc ? new Date(b.complaintDate) - new Date(a.complaintDate) : new Date(a.complaintDate) - new Date(b.complaintDate)
+      sortDesc
+        ? new Date(b.complaintDate) - new Date(a.complaintDate)
+        : new Date(a.complaintDate) - new Date(b.complaintDate),
     );
   }, [
     jobs,
@@ -356,9 +284,18 @@ export default function JobsTable({
   ]);
 
   const selectableRows = filtered.filter(canSelectRow);
-  const allSelected = selectableRows.length > 0 && selected.length === selectableRows.length;
+  const allSelected =
+    selectableRows.length > 0 && selected.length === selectableRows.length;
   const hasActiveFilters =
-    search || status || jobSource || callType || nature || serviceCenter || serviceEngineer || dateFrom || dateTo;
+    search ||
+    status ||
+    jobSource ||
+    callType ||
+    nature ||
+    serviceCenter ||
+    serviceEngineer ||
+    dateFrom ||
+    dateTo;
 
   const [jobSourceOptions, setJobSourceOptions] = useState([]);
   const [callTypeOptions, setCallTypeOptions] = useState([]);
@@ -375,11 +312,15 @@ export default function JobsTable({
         setCallTypeOptions(callType.data?.data ?? []);
         setNatureOfWorkOptions(nature.data?.data ?? []);
       })
-      .catch((err) => console.error("Failed to load job category options", err));
+      .catch((err) =>
+        console.error("Failed to load job category options", err),
+      );
   }, []);
 
   function toggleOne(id) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   function clearFilters() {
@@ -400,10 +341,13 @@ export default function JobsTable({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-navy-900">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
+          )}
         </div>
         <p className="text-sm text-slate-400">
-          <span className="font-semibold text-navy-900">{filtered.length}</span> of {jobs.length} jobs
+          <span className="font-semibold text-navy-900">{filtered.length}</span>{" "}
+          of {jobs.length} jobs
         </p>
       </div>
 
@@ -425,7 +369,10 @@ export default function JobsTable({
 
           <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             {showStatusFilter && (
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className={selectClass}>
                 <option value="">All Statuses</option>
                 {JOB_STATUS_LIST.map((opt) => (
                   <option key={opt} value={opt}>
@@ -435,7 +382,10 @@ export default function JobsTable({
               </select>
             )}
 
-            <select value={jobSource} onChange={(e) => setJobSource(e.target.value)} className={selectClass}>
+            <select
+              value={jobSource}
+              onChange={(e) => setJobSource(e.target.value)}
+              className={selectClass}>
               <option value="">All Job Sources</option>
               {jobSourceOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -444,7 +394,10 @@ export default function JobsTable({
               ))}
             </select>
 
-            <select value={callType} onChange={(e) => setCallType(e.target.value)} className={selectClass}>
+            <select
+              value={callType}
+              onChange={(e) => setCallType(e.target.value)}
+              className={selectClass}>
               <option value="">All Call Types</option>
               {callTypeOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -453,7 +406,10 @@ export default function JobsTable({
               ))}
             </select>
 
-            <select value={nature} onChange={(e) => setNature(e.target.value)} className={selectClass}>
+            <select
+              value={nature}
+              onChange={(e) => setNature(e.target.value)}
+              className={selectClass}>
               <option value="">All Nature of Work</option>
               {natureOfWorkOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -463,7 +419,10 @@ export default function JobsTable({
             </select>
 
             {showServiceCenterFilter && (
-              <select value={serviceCenter} onChange={(e) => setServiceCenter(e.target.value)} className={selectClass}>
+              <select
+                value={serviceCenter}
+                onChange={(e) => setServiceCenter(e.target.value)}
+                className={selectClass}>
                 <option value="">All Service Centers</option>
                 {serviceCenterOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -477,8 +436,7 @@ export default function JobsTable({
               <select
                 value={serviceEngineer}
                 onChange={(e) => setServiceEngineer(e.target.value)}
-                className={`${selectClass} col-span-2 sm:col-span-1`}
-              >
+                className={`${selectClass} col-span-2 sm:col-span-1`}>
                 <option value="">All Service Engineers</option>
                 {serviceEngineerOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -490,7 +448,10 @@ export default function JobsTable({
 
             {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
             <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
-              <CalendarRange className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.75} />
+              <CalendarRange
+                className="h-4 w-4 shrink-0 text-slate-400"
+                strokeWidth={1.75}
+              />
               <input
                 type="date"
                 value={dateFrom}
@@ -513,8 +474,7 @@ export default function JobsTable({
             <button
               type="button"
               onClick={() => setSortDesc((v) => !v)}
-              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto"
-            >
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -523,8 +483,7 @@ export default function JobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto"
-              >
+                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
                 Clear filters
               </button>
             )}
@@ -532,126 +491,186 @@ export default function JobsTable({
         </div>
       </div>
 
-      {/* Mobile / tablet: stacked cards (below lg) */}
-      <div className="space-y-3 lg:hidden">
-        {filtered.map((job) => (
-          <JobCard
-            key={job._id}
-            job={job}
-            showCheckbox={showBulkAssign}
-            checked={selected.includes(job._id)}
-            onToggle={() => toggleOne(job._id)}
-            selectable={canSelectRow(job)}
-            showHoldReason={showHoldReasonColumn}
-            showCancelReason={showCancelReasonColumn}
-            actionProps={{
-              canAssign: canAssignRow(job),
-              canCancel: canCancelRow(job),
-              onEditJob,
-              onAssignJob,
-              onViewLogs,
-              onCancelJob,
-            }}
-          />
-        ))}
-        {filtered.length === 0 && <EmptyState />}
-      </div>
-
-      {/* Desktop: table (lg and up) */}
-      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1300px] text-left text-sm">
+      {/* Responsive table */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
+
                 <th className="whitespace-nowrap px-4 py-3">TAT</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Nature / Call Type</th>
-                <th className="px-4 py-3">Assigned To</th>
-                {showHoldReasonColumn && <th className="px-4 py-3">Reason for Hold</th>}
-                {showCancelReasonColumn && <th className="px-4 py-3">Cancellation Reason</th>}
+
+                <th className="whitespace-nowrap px-4 py-3">Customer</th>
+
+                <th className="whitespace-nowrap px-4 py-3">
+                  Nature / Call Type
+                </th>
+
+                <th className="whitespace-nowrap px-4 py-3">Assigned To</th>
+
+                {showHoldReasonColumn && (
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Reason for Hold
+                  </th>
+                )}
+
+                {showCancelReasonColumn && (
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Cancellation Reason
+                  </th>
+                )}
+
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
-                <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
+
+                <th className="whitespace-nowrap px-4 py-3 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
+
             <tbody>
               {filtered.map((job, idx) => {
-                const tat = job?.solveDate ? formatDuration(job.complaintDate, job.solveDate) : "—";
+                const tat = job?.solveDate
+                  ? formatDuration(job.complaintDate, job.solveDate)
+                  : "—";
+
                 return (
-                  <tr key={job._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">{idx + 1}</td>
+                  <tr
+                    key={job._id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
+                      {idx + 1}
+                    </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
                       {job.complaintNumber}
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {formatDateTime(job.complaintDate)}
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {formatShortDate(job.scheduleDate)}
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       {formatDateTime(job.solveDate)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">{tat}</td>
-                    <td className="px-4 py-3.5">
-                      <p className="max-w-[180px] truncate font-medium text-navy-900" title={job.customer?.name}>
-                        {job.customer?.name || "N/A"}
+
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                      {tat}
+                    </td>
+
+                    {/* Customer */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <div className="min-w-[220px]">
+                        <p
+                          className="whitespace-nowrap font-medium text-navy-900"
+                          title={job.customer?.name}>
+                          {job.customer?.name || "N/A"}
+                        </p>
+
+                        {job.customer?.mobileNumber && (
+                          <a
+                            href={`tel:${job.customer.mobileNumber}`}
+                            className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                            title={`Call ${job.customer.mobileNumber}`}>
+                            <Phone
+                              size={13}
+                              strokeWidth={1.75}
+                              className="shrink-0"
+                            />
+
+                            <span className="whitespace-nowrap">
+                              {job.customer.mobileNumber}
+                            </span>
+                          </a>
+                        )}
+
+                        {job.customer?.address && (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              job.customer.address,
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 flex max-w-[260px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
+                            title={`Open location: ${job.customer.address}`}>
+                            <MapPin
+                              size={13}
+                              strokeWidth={1.75}
+                              className="shrink-0"
+                            />
+
+                            <span className="whitespace-nowrap">
+                              {job.customer.address}
+                            </span>
+                          </a>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Nature / Call Type */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <p className="whitespace-nowrap text-navy-900">
+                        {job.natureOfWork || "—"}
                       </p>
 
-                      {job.customer?.mobileNumber && (
-                        <a
-                          href={`tel:${job.customer.mobileNumber}`}
-                          className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                          title={`Call ${job.customer.mobileNumber}`}
-                        >
-                          <Phone size={13} strokeWidth={1.75} />
-                          {job.customer.mobileNumber}
-                        </a>
-                      )}
+                      <p className="whitespace-nowrap text-xs text-slate-500">
+                        {job.callType || "—"}
+                      </p>
+                    </td>
 
-                      {job.customer?.address && (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customer.address)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 flex max-w-[220px] items-center gap-1 truncate text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                          title={`Open location: ${job.customer.address}`}
-                        >
-                          <MapPin size={13} strokeWidth={1.75} className="shrink-0" />
-                          <span className="truncate">{job.customer.address}</span>
-                        </a>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.natureOfWork}</p>
-                      <p className="text-xs text-slate-500">{job.callType}</p>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-600">
-                      <span className="block max-w-40 truncate" title={job?.assignedServiceCenter?.name}>
-                        {job?.assignedServiceCenter?.name || "-"}
+                    {/* Assigned To */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                      <span
+                        className="whitespace-nowrap"
+                        title={job?.assignedServiceCenter?.name}>
+                        {job?.assignedServiceCenter?.name || "—"}
                       </span>
                     </td>
+
+                    {/* Hold Reason */}
                     {showHoldReasonColumn && (
-                      <td className="px-4 py-3.5 text-slate-600">
-                        <span className="block max-w-45 truncate" title={job.holdReason ?? ""}>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        <span
+                          className="whitespace-nowrap"
+                          title={job.holdReason ?? ""}>
                           {job.holdReason ?? "—"}
                         </span>
                       </td>
                     )}
+
+                    {/* Cancellation Reason */}
                     {showCancelReasonColumn && (
-                      <td className="px-4 py-3.5 text-slate-600">
-                        <span className="block max-w-45 truncate" title={job.cancelReason ?? ""}>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        <span
+                          className="whitespace-nowrap"
+                          title={job.cancelReason ?? ""}>
                           {job.cancelReason ?? "—"}
                         </span>
                       </td>
                     )}
+
+                    {/* Status */}
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
+                      <StatusBadge
+                        status={job.status}
+                        tone={STATUS_TONE[job.status]}
+                      />
                     </td>
+
+                    {/* Actions */}
                     <td className="whitespace-nowrap px-4 py-3.5">
                       <div className="flex items-center justify-end">
                         <RowActions
@@ -671,6 +690,7 @@ export default function JobsTable({
               })}
             </tbody>
           </table>
+
           {filtered.length === 0 && (
             <div className="px-4 py-16">
               <EmptyState />

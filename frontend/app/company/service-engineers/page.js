@@ -119,90 +119,118 @@ export default function ServiceEngineersPage() {
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Service Center</th>
-              <th className="px-4 py-3">Contact Number</th>
-              <th className="px-4 py-3">Username</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-max text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  Loading…
-                </td>
+                <th className="whitespace-nowrap px-4 py-3">Name</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Service Center</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Contact Number</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Username</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Status</th>
+
+                <th className="whitespace-nowrap px-4 py-3 text-right">
+                  Actions
+                </th>
               </tr>
-            ) : engineers.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  No service engineers yet.
-                </td>
-              </tr>
-            ) : (
-              engineers.map((e) => (
-                <tr key={e._id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium text-navy-900">
-                    {e.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.serviceCenter?.name || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.contactNumber || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{e.username}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        e.status === "Active"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-red-100 text-red-500"
-                      }`}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => handleChangeAccount(e._id, e.name)}
-                        type="button"
-                        title="Login as this company"
-                        className="rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
-                        <LogIn size={17} strokeWidth={1.75} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(
-                            `/company/service-engineers/${e._id}/edit`,
-                          )
-                        }
-                        className="rounded-lg border border-gray-500 px-3 cursor-pointer py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingId === e._id}
-                        onClick={() => handleDelete(e)}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60">
-                        {deletingId === e._id ? "Deleting…" : "Delete"}
-                      </button>
-                    </div>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                    Loading…
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : engineers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="whitespace-nowrap px-4 py-6 text-center text-slate-400">
+                    No service engineers yet.
+                  </td>
+                </tr>
+              ) : (
+                engineers.map((e) => (
+                  <tr key={e._id} className="border-t border-slate-100">
+                    {/* Name */}
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                      {e.name}
+                    </td>
+
+                    {/* Service Center */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.serviceCenter?.name || "—"}
+                    </td>
+
+                    {/* Contact Number */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.contactNumber || "—"}
+                    </td>
+
+                    {/* Username */}
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.username}
+                    </td>
+
+                    {/* Status */}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          e.status === "Active"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-red-100 text-red-500"
+                        }`}>
+                        {e.status}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Login */}
+                        <button
+                          onClick={() => handleChangeAccount(e._id, e.name)}
+                          type="button"
+                          title="Login as this service engineer"
+                          className="shrink-0 rounded-md p-1.5 text-slate-500 transition hover:bg-electric-500/10 hover:text-electric-500">
+                          <LogIn size={17} strokeWidth={1.75} />
+                        </button>
+
+                        {/* Edit */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/company/service-engineers/${e._id}/edit`,
+                            )
+                          }
+                          className="shrink-0 cursor-pointer whitespace-nowrap rounded-lg border border-gray-500 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                          Edit
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          disabled={deletingId === e._id}
+                          onClick={() => handleDelete(e)}
+                          className="shrink-0 whitespace-nowrap rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-60">
+                          {deletingId === e._id ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
