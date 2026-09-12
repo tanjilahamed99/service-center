@@ -13,7 +13,6 @@ const TABS = [
 ];
 
 function TransactionTypeBadge({ type }) {
-  console.log(type);
   const styles = {
     Allocate: "bg-gray-500/10 text-gray-600",
     Consume: "bg-amber-50 text-amber-600",

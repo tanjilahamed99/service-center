@@ -197,16 +197,6 @@ export default function AdminLayout({ children }) {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Notifications */}
-              <button
-                type="button"
-                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-                aria-label="Notifications">
-                <Bell size={20} strokeWidth={1.75} />
-
-                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-400" />
-              </button>
-
               {/* Profile */}
               <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-semibold text-white">

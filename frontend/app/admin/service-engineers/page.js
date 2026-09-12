@@ -1,4 +1,3 @@
-// app/admin/service-engineers/page.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,12 +15,14 @@ export default function AdminServiceEngineersPage() {
   async function load() {
     setLoading(true);
     setError("");
+
     try {
       const res = await getAdminServiceEngineers({
         company: companyFilter || undefined,
         status: statusFilter || undefined,
         search: search || undefined,
       });
+
       setEngineers(res.data?.data ?? []);
     } catch (err) {
       console.error("Failed to load service engineers", err);
@@ -39,21 +40,26 @@ export default function AdminServiceEngineersPage() {
 
   useEffect(() => {
     const t = setTimeout(load, search ? 350 : 0);
+
     return () => clearTimeout(t);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyFilter, statusFilter, search]);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-navy-900">
           Service Engineers
         </h2>
+
         <p className="mt-1 text-sm text-slate-500">
           Every service engineer, grouped by company and service center.
         </p>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 sm:flex-row sm:flex-wrap sm:items-center">
         <input
           value={search}
@@ -61,17 +67,20 @@ export default function AdminServiceEngineersPage() {
           placeholder="Search by name or username"
           className="w-full flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 sm:min-w-[220px]"
         />
+
         <select
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto">
           <option value="">All Companies</option>
+
           {companies.map((c) => (
             <option key={c._id} value={c._id}>
               {c.companyName}
             </option>
           ))}
         </select>
+
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -82,68 +91,85 @@ export default function AdminServiceEngineersPage() {
         </select>
       </div>
 
+      {/* Error */}
       {error && <p className="text-sm font-medium text-red-500">{error}</p>}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Company</th>
-              <th className="px-4 py-3">Service Center</th>
-              <th className="px-4 py-3">Contact Number</th>
-              <th className="px-4 py-3">Username</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+      {/* Responsive Table */}
+      <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[950px] w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  Loading…
-                </td>
+                <th className="whitespace-nowrap px-4 py-3">Name</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Company</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Service Center</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Contact Number</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Username</th>
+
+                <th className="whitespace-nowrap px-4 py-3">Status</th>
               </tr>
-            ) : engineers.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400">
-                  No service engineers found.
-                </td>
-              </tr>
-            ) : (
-              engineers.map((e) => (
-                <tr key={e._id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-medium text-navy-900">
-                    {e.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.company?.companyName || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.serviceCenter?.name || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.contactNumber || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{e.username}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        e.status === "Active"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-red-100 text-red-500"
-                      }`}>
-                      {e.status}
-                    </span>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-slate-400">
+                    Loading…
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : engineers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-slate-400">
+                    No service engineers found.
+                  </td>
+                </tr>
+              ) : (
+                engineers.map((e) => (
+                  <tr key={e._id} className="border-t border-slate-100">
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-navy-900">
+                      {e.name}
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.company?.companyName || "—"}
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.serviceCenter?.name || "—"}
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.contactNumber || "—"}
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                      {e.username}
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          e.status === "Active"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-red-100 text-red-500"
+                        }`}>
+                        {e.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

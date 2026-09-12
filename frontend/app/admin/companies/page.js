@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getCompany, deleteCompany, loginCompany } from "@/actions/admin";
 import { toast } from "sonner";
-import { LogIn, Pencil, KeyRound, Trash2 } from "lucide-react";
+import { LogIn, Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { useAuthStore } from "@/features/Useauthstore";
 import { useRouter } from "next/navigation";
@@ -14,11 +14,11 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
         isActive ? "bg-emerald-50 text-emerald-600" : "bg-red-100 text-red-500"
       }`}>
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
           isActive ? "bg-emerald-500" : "bg-red-400"
         }`}
       />
@@ -48,7 +48,7 @@ function SortIcon({ active, dir }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className={`h-3.5 w-3.5 transition ${
+      className={`h-3.5 w-3.5 shrink-0 transition ${
         active ? "text-electric-500" : "text-slate-300"
       } ${active && dir === "desc" ? "rotate-180" : ""}`}
       fill="none"
@@ -71,6 +71,7 @@ export default function CompaniesPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortBy, setSortBy] = useState("companyName");
   const [sortDir, setSortDir] = useState("asc");
+
   const setAuth = useAuthStore((s) => s.setAuth);
   const router = useRouter();
 
@@ -208,8 +209,13 @@ export default function CompaniesPage() {
       if (result.isConfirmed)
         try {
           const { data } = await loginCompany(companyId);
+
           if (data.success) {
-            setAuth({ token: data.token, user: data.company });
+            setAuth({
+              token: data.token,
+              user: data.company,
+            });
+
             toast.success("Login successful");
             router.push("/company");
           }
@@ -284,28 +290,31 @@ export default function CompaniesPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+        {/* Responsive horizontal scroll */}
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[850px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3 font-medium">S.No.</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">
+                  S.No.
+                </th>
 
-                <th className="px-4 py-3 font-medium">
+                <th className="whitespace-nowrap px-4 py-3 font-medium">
                   <button
                     type="button"
                     onClick={() => toggleSort("companyName")}
-                    className="flex items-center gap-1 hover:text-navy-900">
+                    className="inline-flex items-center gap-1 whitespace-nowrap hover:text-navy-900">
                     Company Name
                     <SortIcon active={sortBy === "companyName"} dir={sortDir} />
                   </button>
                 </th>
 
-                <th className="px-4 py-3 font-medium">
+                <th className="whitespace-nowrap px-4 py-3 font-medium">
                   <button
                     type="button"
                     onClick={() => toggleSort("creationDate")}
-                    className="flex items-center gap-1 hover:text-navy-900">
+                    className="inline-flex items-center gap-1 whitespace-nowrap hover:text-navy-900">
                     Creation Date
                     <SortIcon
                       active={sortBy === "creationDate"}
@@ -314,11 +323,17 @@ export default function CompaniesPage() {
                   </button>
                 </th>
 
-                <th className="px-4 py-3 font-medium">Valid Upto</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">
+                  Valid Upto
+                </th>
 
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">
+                  Status
+                </th>
 
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -327,25 +342,27 @@ export default function CompaniesPage() {
                 <tr
                   key={company?._id || index}
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                  <td className="px-4 py-3.5 text-slate-500">{index + 1}</td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
+                    {index + 1}
+                  </td>
 
-                  <td className="px-4 py-3.5 font-medium text-navy-900">
+                  <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
                     {company?.companyName || "—"}
                   </td>
 
-                  <td className="px-4 py-3.5 text-slate-600">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDate(company?.creationDate)}
                   </td>
 
-                  <td className="px-4 py-3.5 text-slate-600">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                     {formatDate(company?.subscriptionPlan?.toDate)}
                   </td>
 
-                  <td className="px-4 py-3.5">
+                  <td className="whitespace-nowrap px-4 py-3.5">
                     <StatusBadge status={company?.status || "Inactive"} />
                   </td>
 
-                  <td className="px-4 py-3.5">
+                  <td className="whitespace-nowrap px-4 py-3.5">
                     <div className="flex items-center justify-end gap-1.5">
                       {/* Login */}
                       <button

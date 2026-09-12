@@ -1,4 +1,3 @@
-// components/admin/JobCategoryManager.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,9 +13,9 @@ const TABS = [
   { type: "HoldSubStatus", label: "Hold Reason Categories" },
   { type: "ActualIssue", label: "Actual Issue Found" },
   { type: "CorrectiveAction", label: "Corrective Action Taken" },
-  { type: "JobSource", label: "Job Source" }, // NEW
-  { type: "CallType", label: "Call Type" }, // NEW
-  { type: "NatureOfWork", label: "Nature of Work" }, // NEW
+  { type: "JobSource", label: "Job Source" },
+  { type: "CallType", label: "Call Type" },
+  { type: "NatureOfWork", label: "Nature of Work" },
 ];
 
 const inputClass =
@@ -36,6 +35,7 @@ export default function JobCategoryManager() {
 
   async function load() {
     setLoading(true);
+
     try {
       const res = await getJobCategories(activeTab);
       setItems(res.data?.data ?? []);
@@ -48,8 +48,13 @@ export default function JobCategoryManager() {
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
+
     try {
-      await createJobCategory({ type: activeTab, label: newLabel.trim() });
+      await createJobCategory({
+        type: activeTab,
+        label: newLabel.trim(),
+      });
+
       setNewLabel("");
       toast.success("Added");
       load();
@@ -60,7 +65,10 @@ export default function JobCategoryManager() {
 
   async function handleToggleActive(item) {
     try {
-      await updateJobCategory(item._id, { isActive: !item.isActive });
+      await updateJobCategory(item._id, {
+        isActive: !item.isActive,
+      });
+
       load();
     } catch (err) {
       toast.error("Failed to update");
@@ -69,9 +77,14 @@ export default function JobCategoryManager() {
 
   async function handleSaveEdit(id) {
     if (!editingLabel.trim()) return;
+
     try {
-      await updateJobCategory(id, { label: editingLabel.trim() });
+      await updateJobCategory(id, {
+        label: editingLabel.trim(),
+      });
+
       setEditingId(null);
+      setEditingLabel("");
       toast.success("Updated");
       load();
     } catch (err) {
@@ -81,6 +94,7 @@ export default function JobCategoryManager() {
 
   async function handleDelete(id) {
     if (!confirm("Delete this category? This cannot be undone.")) return;
+
     try {
       await deleteJobCategory(id);
       toast.success("Deleted");
@@ -91,74 +105,111 @@ export default function JobCategoryManager() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <div className="mb-4 flex gap-2 border-b border-slate-200">
-        {TABS.map((tab) => (
-          <button
-            key={tab.type}
-            type="button"
-            onClick={() => setActiveTab(tab.type)}
-            className={`px-3 py-2 text-sm font-medium ${
-              activeTab === tab.type
-                ? "border-b-2 border-electric-500 text-electric-500"
-                : "text-slate-500 hover:text-navy-900"
-            }`}>
-            {tab.label}
-          </button>
-        ))}
+    <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 lg:p-6">
+      {/* Tabs */}
+      <div className="mb-4 -mx-1 overflow-x-auto border-b border-slate-200 px-1">
+        <div className="flex min-w-max gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.type}
+              type="button"
+              onClick={() => setActiveTab(tab.type)}
+              className={`whitespace-nowrap px-3 py-2.5 text-sm font-medium transition ${
+                activeTab === tab.type
+                  ? "border-b-2 border-electric-500 text-electric-500"
+                  : "text-slate-500 hover:text-navy-900"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-4 flex gap-2">
+      {/* Add Category */}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
           placeholder="New category label"
           className={inputClass}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleAdd();
+            }
+          }}
         />
+
         <button
           type="button"
           onClick={handleAdd}
-          className="whitespace-nowrap rounded-lg bg-electric-500 px-4 py-2 text-sm font-semibold text-white hover:brightness-110">
+          className="w-full whitespace-nowrap rounded-lg bg-electric-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 sm:w-auto">
           Add
         </button>
       </div>
 
+      {/* Content */}
       {loading ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-slate-400">No categories yet.</p>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
           {items.map((item) => (
             <div
               key={item._id}
-              className="flex items-center justify-between px-4 py-2.5">
-              {editingId === item._id ? (
-                <input
-                  autoFocus
-                  value={editingLabel}
-                  onChange={(e) => setEditingLabel(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleSaveEdit(item._id)
-                  }
-                  className={`${inputClass} mr-2`}
-                />
-              ) : (
-                <span
-                  className={`text-sm ${item.isActive ? "text-navy-900" : "text-slate-400 line-through"}`}>
-                  {item.label}
-                </span>
-              )}
-
-              <div className="flex items-center gap-2">
+              className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              {/* Label / Edit Input */}
+              <div className="min-w-0 flex-1">
                 {editingId === item._id ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSaveEdit(item._id)}
-                    className="text-xs font-semibold text-electric-500">
-                    Save
-                  </button>
+                  <input
+                    autoFocus
+                    value={editingLabel}
+                    onChange={(e) => setEditingLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSaveEdit(item._id);
+                      }
+
+                      if (e.key === "Escape") {
+                        setEditingId(null);
+                        setEditingLabel("");
+                      }
+                    }}
+                    className={inputClass}
+                  />
+                ) : (
+                  <span
+                    className={`block whitespace-nowrap text-sm ${
+                      item.isActive
+                        ? "text-navy-900"
+                        : "text-slate-400 line-through"
+                    }`}>
+                    {item.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
+                {editingId === item._id ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveEdit(item._id)}
+                      className="whitespace-nowrap text-xs font-semibold text-electric-500 hover:text-electric-600">
+                      Save
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingLabel("");
+                      }}
+                      className="whitespace-nowrap text-xs font-semibold text-slate-500 hover:text-navy-900">
+                      Cancel
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -166,20 +217,22 @@ export default function JobCategoryManager() {
                       setEditingId(item._id);
                       setEditingLabel(item.label);
                     }}
-                    className="text-xs font-semibold text-slate-500 hover:text-navy-900">
+                    className="whitespace-nowrap text-xs font-semibold text-slate-500 hover:text-navy-900">
                     Edit
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={() => handleToggleActive(item)}
-                  className="text-xs font-semibold text-slate-500 hover:text-navy-900">
+                  className="whitespace-nowrap text-xs font-semibold text-slate-500 hover:text-navy-900">
                   {item.isActive ? "Deactivate" : "Activate"}
                 </button>
+
                 <button
                   type="button"
                   onClick={() => handleDelete(item._id)}
-                  className="text-xs font-semibold text-red-500 hover:text-red-600">
+                  className="whitespace-nowrap text-xs font-semibold text-red-500 hover:text-red-600">
                   Delete
                 </button>
               </div>
