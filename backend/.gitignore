@@ -3,3 +3,9 @@ node_modules
 .example.env
 .serviceAccountKey.json
 .env
+
+# managed
+**.data.json
+**.node-persist**
+**_IGNORE_**
+# end managed
