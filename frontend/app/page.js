@@ -69,20 +69,10 @@ export default function LoginPage() {
 
         {/* Logo + brand */}
         <div className="relative flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-electric-500/15 ring-1 ring-electric-400/40">
-            <svg
-              viewBox="0 0 24 24"
-              className="h-5 w-5 text-electric-400"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75">
-              <rect x="7" y="7" width="10" height="10" rx="1.5" />
-              <path
-                strokeLinecap="round"
-                d="M9 3v2M15 3v2M9 19v2M15 19v2M3 9h2M3 15h2M19 9h2M19 15h2"
-              />
-            </svg>
-          </span>
+          <img
+            src="./mainlogo.png"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-electric-500/15 ring-1 ring-electric-400/40"
+          />
           <span className="text-lg font-semibold tracking-tight text-white">
             Aceit Technologies (P)ltd
           </span>
