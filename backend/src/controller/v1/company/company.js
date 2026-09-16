@@ -720,7 +720,7 @@ exports.createServiceCenter = async (req, res) => {
       });
     }
 
-    const existing = await ServiceCenter.findOne({ company, username });
+    const existing = await ServiceCenter.findOne({ username });
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -904,7 +904,7 @@ exports.createServiceEngineer = async (req, res) => {
         .json({ success: false, message: "Service center not found" });
     }
 
-    const existing = await ServiceEngineer.findOne({ company, username });
+    const existing = await ServiceEngineer.findOne({ username });
     if (existing) {
       return res.status(409).json({
         success: false,
