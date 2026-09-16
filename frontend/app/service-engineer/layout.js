@@ -35,6 +35,7 @@ function isActive(href, pathname) {
 
 function SidebarContent({ pathname, onNavigate }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const user = useAuthStore((s) => s.user);
   const handleLogout = () => {
     clearAuth();
     toast.success("Logged out.");
@@ -61,8 +62,8 @@ function SidebarContent({ pathname, onNavigate }) {
           <p className="text-sm font-semibold text-white">
             Aceit Technologies (P)ltd
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
-            Service Engineer
+          <p className="font-mono text-[10px] lg:hidden uppercase tracking-[0.15em] text-electric-400">
+            {user?.name}
           </p>
         </div>
       </div>

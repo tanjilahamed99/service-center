@@ -216,7 +216,6 @@ export default function ServiceCenterJobsTable({
       : showCancelAction;
   }
 
-
   const filtered = useMemo(() => {
     const rows = jobs.filter((job) => {
       const matchesSearch =
@@ -298,7 +297,6 @@ export default function ServiceCenterJobsTable({
         console.error("Failed to load job category options", err),
       );
   }, []);
-
 
   function clearFilters() {
     setSearch("");
@@ -461,6 +459,11 @@ export default function ServiceCenterJobsTable({
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
                 <th className="whitespace-nowrap px-4 py-3">Customer</th>
+                <th className="whitespace-nowrap px-4 py-3">Brand</th>
+                <th className="whitespace-nowrap px-4 py-3">Product</th>
+                <th className="whitespace-nowrap px-4 py-3">Model</th>
+                <th className="whitespace-nowrap px-4 py-3">Serial number</th>
+                <th className="whitespace-nowrap px-4 py-3">Warranty</th>
                 <th className="whitespace-nowrap px-4 py-3">
                   Nature / Call Type
                 </th>
@@ -567,6 +570,33 @@ export default function ServiceCenterJobsTable({
                         </a>
                       )}
                     </div>
+                  </td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.brand}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.product}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.modelNumber}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.serialNumber}</p>
+                  </td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">
+                      {job.warrantyTo
+                        ? `${Math.max(
+                            0,
+                            Math.ceil(
+                              (new Date(job.warrantyTo) - new Date()) /
+                                (1000 * 60 * 60 * 24),
+                            ),
+                          )} days left`
+                        : "No warranty"}
+                    </p>
                   </td>
 
                   {/* Nature / Call Type */}

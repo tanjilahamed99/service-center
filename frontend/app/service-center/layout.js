@@ -40,6 +40,7 @@ function isActive(href, pathname) {
 
 function SidebarContent({ pathname, onNavigate }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const handleLogout = () => {
     clearAuth();
@@ -67,8 +68,8 @@ function SidebarContent({ pathname, onNavigate }) {
         </span>
         <div>
           <p className="text-sm font-semibold text-white">Aceit Technologies</p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-electric-400">
-            Service Center
+          <p className="font-mono text-[10px] lg:hidden uppercase tracking-[0.15em] text-electric-400">
+            {user?.name}
           </p>
         </div>
       </div>

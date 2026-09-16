@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: {
-    default: "Aceit Technologies (P) Ltd.",
+    default: "Service CRM || Aceit Technologies (P) Ltd.",
     template: "%s | Aceit Technologies",
   },
   description:
