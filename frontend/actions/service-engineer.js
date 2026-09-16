@@ -29,3 +29,9 @@ export const getDashboardStats = () =>
   API.get(`/service-engineer/dashboard-stats`);
 
 export const serviceEngineerGetMySparePartStock = () => API.get(`/service-engineer/getMySparePartStock`);
+
+
+export const getAccountStatus = () => API.get(`/service-engineer/account-status`);
+ 
+// params: { status } (optional)
+export const myJobs = (params = {}) => API.get(`/service-engineer/jobs`, { params });
