@@ -317,12 +317,6 @@ export default function JobsTable({
       );
   }, []);
 
-  function toggleOne(id) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
-
   function clearFilters() {
     setSearch("");
     setStatus("");
@@ -483,7 +477,7 @@ export default function JobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
+                className="col-span-2 text-black rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
                 Clear filters
               </button>
             )}

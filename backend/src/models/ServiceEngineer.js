@@ -32,6 +32,7 @@ const ServiceEngineerSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: [true, "Username already exist"],
     },
     password: {
       type: String,

@@ -38,6 +38,7 @@ const CompanySchema = new mongoose.Schema(
       trim: true,
       unique: true,
       lowercase: true,
+      unique: [true, "UserName already exist"],
     },
     password: {
       type: String,
