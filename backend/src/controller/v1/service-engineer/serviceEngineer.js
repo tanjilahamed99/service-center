@@ -5,12 +5,6 @@ const SparePartStock = require("../../../models/SparePartStock");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const OPEN_STATUSES = [
-  "Registered",
-  "Service Center Assigned",
-  "Service Engineer Assigned",
-  "Hold",
-];
 
 exports.serviceEngineerJobs = async (req, res) => {
   try {
@@ -487,7 +481,6 @@ exports.changeMyPassword = async (req, res) => {
   }
 };
 
-// GET /service-center/dashboard-stats
 exports.getDashboardStats = async (req, res) => {
   try {
     const serviceEngineer = req.user._id;
@@ -501,6 +494,7 @@ exports.getDashboardStats = async (req, res) => {
           "Service Engineer not found or not associated with a service center",
       });
     }
+
     const now = new Date();
 
     const [
@@ -508,39 +502,65 @@ exports.getDashboardStats = async (req, res) => {
       pending3Days,
       pending7Days,
       totalJobs,
-      pendingAtServiceCenter,
+      pendingJobs,
       jobsOnHold,
       completedJobs,
+      cancelledJobs,
     ] = await Promise.all([
+      // Pending for more than 1 day
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 1 * DAY_MS) },
+        status: "Service Engineer Assigned",
+        complaintDate: {
+          $lte: new Date(now - 1 * DAY_MS),
+        },
       }),
+
+      // Pending for more than 3 days
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 3 * DAY_MS) },
+        status: "Service Engineer Assigned",
+        complaintDate: {
+          $lte: new Date(now - 3 * DAY_MS),
+        },
       }),
+
+      // Pending for more than 7 days
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 7 * DAY_MS) },
+        status: "Service Engineer Assigned",
+        complaintDate: {
+          $lte: new Date(now - 7 * DAY_MS),
+        },
       }),
+
+      // All jobs assigned to engineer
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
       }),
+
+      // Pending
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
-        status: "Service Center Assigned",
+        status: "Service Engineer Assigned",
       }),
+
+      // Hold
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
         status: "Hold",
       }),
+
+      // Completed
       Job.countDocuments({
         assignedServiceEngineer: serviceEngineer,
         status: "Completed",
+      }),
+
+      // Cancelled
+      Job.countDocuments({
+        assignedServiceEngineer: serviceEngineer,
+        status: "Cancelled",
       }),
     ]);
 
@@ -550,14 +570,18 @@ exports.getDashboardStats = async (req, res) => {
         pending1Day,
         pending3Days,
         pending7Days,
+
         totalJobs,
-        pendingAtServiceCenter,
+
+        pendingJobs,
         jobsOnHold,
         completedJobs,
+        cancelledJobs,
       },
     });
   } catch (error) {
     console.error("getDashboardStats error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard stats",
@@ -603,19 +627,48 @@ exports.myJobs = async (req, res) => {
     const serviceEngineer = req.user._id;
     const { status } = req.query;
 
-    console.log(status);
+    const filter = {
+      assignedServiceEngineer: serviceEngineer,
+    };
 
-    const filter = { assignedServiceEngineer: serviceEngineer };
-    if (status) filter.status = status;
+    // Map frontend/dashboard status -> actual Job status
+    switch (status?.toLowerCase()) {
+      case "pending":
+        filter.status = "Service Engineer Assigned";
+        break;
+
+      case "hold":
+        filter.status = "Hold";
+        break;
+
+      case "completed":
+        filter.status = "Completed";
+        break;
+
+      case "cancelled":
+        filter.status = "Cancelled";
+        break;
+
+      default:
+        // No status = return all jobs assigned to this engineer
+        filter.status = {
+          $in: ["Service Engineer Assigned", "Hold", "Completed", "Cancelled"],
+        };
+        break;
+    }
 
     const jobs = await Job.find(filter)
       .populate("customer")
       .populate("assignedServiceCenter", "name")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({ success: true, data: jobs });
+    return res.status(200).json({
+      success: true,
+      data: jobs,
+    });
   } catch (error) {
     console.error("myJobs error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch jobs",
@@ -623,7 +676,6 @@ exports.myJobs = async (req, res) => {
     });
   }
 };
-
 // GET /service-engineer/account-status
 exports.getAccountStatus = async (req, res) => {
   try {

@@ -23,12 +23,11 @@ const NAV_ITEMS = [
         label: "Completed Jobs",
         href: "/service-engineer/complete-job",
       },
+      {
+        label: "Hold Jobs",
+        href: "/service-engineer/hold-job",
+      },
     ],
-  },
-  {
-    label: "Spare Parts",
-    href: "/service-engineer/spare-parts",
-    icon: Wrench,
   },
   { label: "Profile", href: "/service-engineer/profile", icon: UserCircle },
 ];

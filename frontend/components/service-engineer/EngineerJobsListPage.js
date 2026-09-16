@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { myJobs } from "@/actions/service-engineer";
 import JobsTable from "@/components/job/Jobstable";
 import ViewLogsModal from "@/components/job/Viewlogsmodal";
+import ServiceEngineerJobsListPage from "./ServiceCenterJobsListPage";
+import ServiceEngineerJobsTable from "./ServiceEngineerJobTable";
 
 const TERMINAL_STATUSES = ["Completed", "Cancelled"];
 
@@ -22,12 +24,9 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
     setLoading(true);
     setError("");
     try {
-      const params = statusMode === "completed" ? { status: "Completed" } : {};
+      const params = { status: statusMode };
       const res = await myJobs(params);
       let data = res.data?.data ?? [];
-      if (statusMode === "pending") {
-        data = data.filter((job) => !TERMINAL_STATUSES.includes(job.status));
-      }
       setJobs(data);
     } catch (err) {
       console.error("Failed to load jobs", err);
@@ -47,9 +46,11 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
 
   return (
     <>
-      {error && <p className="mb-4 text-sm font-medium text-red-500">{error}</p>}
+      {error && (
+        <p className="mb-4 text-sm font-medium text-red-500">{error}</p>
+      )}
 
-      <JobsTable
+      <ServiceEngineerJobsTable
         title={title}
         subtitle={subtitle}
         jobs={jobs}
@@ -57,7 +58,11 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
         onViewLogs={(job) => setLogsTarget(job)}
       />
 
-      <ViewLogsModal open={!!logsTarget} job={logsTarget} onClose={() => setLogsTarget(null)} />
+      <ViewLogsModal
+        open={!!logsTarget}
+        job={logsTarget}
+        onClose={() => setLogsTarget(null)}
+      />
     </>
   );
 }

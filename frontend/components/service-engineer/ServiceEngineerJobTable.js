@@ -12,10 +12,7 @@ import {
   ScrollText,
   CalendarRange,
 } from "lucide-react";
-import {
-  STATUS_TONE,
-  JOB_STATUS_LIST,
-} from "../job/Constants";
+import { STATUS_TONE, JOB_STATUS_LIST } from "../job/Constants";
 import StatusBadge from "../job/Statusbadge";
 import { getJobCategoryOptions } from "@/actions/company";
 
@@ -345,6 +342,12 @@ export default function ServiceEngineerJobsTable({
 
                 <th className="whitespace-nowrap px-4 py-3">Customer</th>
 
+                <th className="whitespace-nowrap px-4 py-3">Brand</th>
+                <th className="whitespace-nowrap px-4 py-3">Product</th>
+                <th className="whitespace-nowrap px-4 py-3">Model</th>
+                <th className="whitespace-nowrap px-4 py-3">Serial number</th>
+                <th className="whitespace-nowrap px-4 py-3">Warranty</th>
+
                 <th className="whitespace-nowrap px-4 py-3">
                   Nature / Call Type
                 </th>
@@ -436,6 +439,33 @@ export default function ServiceEngineerJobsTable({
                         </a>
                       )}
                     </div>
+                  </td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.brand}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.product}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.modelNumber}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.serialNumber}</p>
+                  </td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">
+                      {job.warrantyTo
+                        ? `${Math.max(
+                            0,
+                            Math.ceil(
+                              (new Date(job.warrantyTo) - new Date()) /
+                                (1000 * 60 * 60 * 24),
+                            ),
+                          )} days left`
+                        : "No warranty"}
+                    </p>
                   </td>
 
                   {/* Nature / Call Type */}

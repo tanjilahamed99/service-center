@@ -119,7 +119,7 @@ export default function ServiceCenterDashboardPage() {
         },
         {
           label: "Pending at Service Center",
-          value: stats.pendingAtServiceCenter,
+          value: stats.pendingJobs,
           icon: Wrench,
           tone: "amber",
         },
