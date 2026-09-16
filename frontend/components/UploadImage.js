@@ -10,7 +10,7 @@ async function uploadFileToImgBB(file) {
 
   const res = await fetch(
     `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
-    { method: "POST", body: formData }
+    { method: "POST", body: formData },
   );
   const data = await res.json();
 
@@ -40,7 +40,7 @@ export default function UploadImage({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const urls = multiple ? value ?? [] : value ? [value] : [];
+  const urls = multiple ? (value ?? []) : value ? [value] : [];
 
   // Mirrors `urls` but updates synchronously the instant an upload finishes,
   // instead of waiting for the value prop to round-trip back from the parent
@@ -56,7 +56,7 @@ export default function UploadImage({
   const handleFiles = useCallback(
     async (fileList) => {
       const files = Array.from(fileList ?? []).filter((f) =>
-        f.type.startsWith("image/")
+        f.type.startsWith("image/"),
       );
       if (!files.length) return;
 
@@ -85,7 +85,7 @@ export default function UploadImage({
         setUploading(false);
       }
     },
-    [multiple, max, onChange]
+    [multiple, max, onChange],
   );
 
   function removeAt(idx) {
@@ -114,14 +114,12 @@ export default function UploadImage({
         {urls.map((url, idx) => (
           <div
             key={url + idx}
-            className="group relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200"
-          >
+            className="group relative h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
             <img src={url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={() => removeAt(idx)}
-              className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
-            >
+              className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100">
               ×
             </button>
           </div>
@@ -130,8 +128,7 @@ export default function UploadImage({
         {(multiple ? urls.length < max : urls.length === 0) && (
           <label
             htmlFor={inputId}
-            className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-electric-400 hover:bg-slate-100"
-          >
+            className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-electric-400 hover:bg-slate-100">
             <span className="text-xs text-slate-400">
               {uploading ? "Uploading…" : "+ Add"}
             </span>
@@ -146,6 +143,7 @@ export default function UploadImage({
                 e.target.value = ""; // allow re-selecting the same file
               }}
               className="hidden"
+              capture="environment"
             />
           </label>
         )}
