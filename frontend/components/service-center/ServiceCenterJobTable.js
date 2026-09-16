@@ -644,8 +644,7 @@ export default function ServiceCenterJobsTable({
 
                   {/* Actions */}
                   <td className="whitespace-nowrap px-4 py-3.5">
-                    <div
-                      className={`items-center justify-end ${hideActions ? "hidden" : "flex"}`}>
+                    <div className={`items-center justify-end `}>
                       <RowActions
                         job={job}
                         canAssign={canAssignRow(job)}

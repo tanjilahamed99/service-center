@@ -31,10 +31,6 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
   const [error, setError] = useState("");
 
   const [serviceEngineers, setServiceEngineers] = useState([]);
-
-  const [assignTarget, setAssignTarget] = useState(null); // array of job ids
-  const [holdTarget, setHoldTarget] = useState(null); // single job
-  const [cancelTarget, setCancelTarget] = useState(null); // single job
   const [logsTarget, setLogsTarget] = useState(null); // single job
 
   const fetchJobs = useCallback(
@@ -81,6 +77,7 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
         variant={status}
         serviceEngineerOptions={serviceEngineers}
         hideActions={true}
+        onViewLogs={(job) => setLogsTarget(job)}
       />
 
       <ViewLogsModal
