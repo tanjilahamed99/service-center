@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { myJobs } from "@/actions/service-engineer";
+import {
+  myJobs,
+  serviceEngineerCloseJob,
+  serviceEngineerHoldJob,
+} from "@/actions/service-engineer";
 import JobsTable from "@/components/job/Jobstable";
 import ViewLogsModal from "@/components/job/Viewlogsmodal";
 import ServiceEngineerJobsListPage from "./ServiceCenterJobsListPage";
 import ServiceEngineerJobsTable from "./ServiceEngineerJobTable";
+import UpdateJobStatusModal from "./UpdateJobStatusModal";
 
 const TERMINAL_STATUSES = ["Completed", "Cancelled"];
 
@@ -19,6 +24,7 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [logsTarget, setLogsTarget] = useState(null);
+  const [statusTarget, setStatusTarget] = useState(null); // single job (update status)
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -40,6 +46,16 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
     fetchJobs();
   }, [fetchJobs]);
 
+  async function handleHold(jobId, payload) {
+    await serviceEngineerHoldJob(jobId, payload);
+    await fetchJobs();
+  }
+
+  async function handleComplete(jobId, payload) {
+    await serviceEngineerCloseJob(jobId, payload);
+    await fetchJobs();
+  }
+
   if (loading) {
     return <p className="text-sm text-slate-400">Loading jobs…</p>;
   }
@@ -54,14 +70,22 @@ export default function EngineerJobsListPage({ statusMode, title, subtitle }) {
         title={title}
         subtitle={subtitle}
         jobs={jobs}
-        variant="serviceEngineer" // no Assign/Cancel actions for this role — those buttons only render for "registered"/"serviceCenter"
-        onViewLogs={(job) => setLogsTarget(job)}
+        onViewJob={(job) => setLogsTarget(job)}
+        onUpdateStatus={(job) => setStatusTarget(job)}
       />
 
       <ViewLogsModal
         open={!!logsTarget}
         job={logsTarget}
         onClose={() => setLogsTarget(null)}
+      />
+
+      <UpdateJobStatusModal
+        open={!!statusTarget}
+        job={statusTarget}
+        onClose={() => setStatusTarget(null)}
+        onHold={handleHold}
+        onComplete={handleComplete}
       />
     </>
   );
