@@ -487,21 +487,55 @@ exports.getDashboardStats = async (req, res) => {
       "Hold",
     ];
 
+    const now = new Date();
+
+    // Start of today
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // End of today
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+
     const [
       totalCompanies,
       activeCompanies,
-      inactiveCompanies, // was suspendedCompanies / "Suspended"
       totalComplaints,
       pendingComplaints,
       completedComplaints,
     ] = await Promise.all([
+      // Total companies
       Company.countDocuments({}),
-      Company.countDocuments({ status: "Active" }),
-      Company.countDocuments({ status: "Inactive" }),
+
+      // Active only when:
+      // 1. status = Active
+      // 2. subscription has not expired
+      // 3. today's date is still valid
+      Company.countDocuments({
+        status: "Active",
+        "subscriptionPlan.toDate": {
+          $gte: startOfToday,
+        },
+      }),
+
+      // Complaints
       Job.countDocuments({}),
-      Job.countDocuments({ status: { $in: OPEN_STATUSES } }),
-      Job.countDocuments({ status: "Completed" }),
+
+      // Pending complaints
+      Job.countDocuments({
+        status: {
+          $in: OPEN_STATUSES,
+        },
+      }),
+
+      // Completed complaints
+      Job.countDocuments({
+        status: "Completed",
+      }),
     ]);
+
+    // Everything that isn't effectively active is inactive
+    const inactiveCompanies = totalCompanies - activeCompanies;
 
     return res.status(200).json({
       success: true,
@@ -520,6 +554,7 @@ exports.getDashboardStats = async (req, res) => {
     });
   } catch (error) {
     console.error("getDashboardStats error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard stats",

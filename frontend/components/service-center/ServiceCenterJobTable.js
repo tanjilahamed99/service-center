@@ -81,13 +81,6 @@ function RowActions({
     <div className="flex items-center gap-1">
       {status !== "Completed" && (
         <>
-          {" "}
-          <ActionButton
-            label="Edit Status"
-            Icon={Pencil}
-            size={size}
-            onClick={() => onEditJob?.(job)}
-          />
           {canAssign && (
             <ActionButton
               label="Assign Job"

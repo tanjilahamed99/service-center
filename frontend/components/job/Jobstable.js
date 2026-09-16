@@ -244,9 +244,16 @@ export default function JobsTable({
       const matchesCallType = !callType || job?.callType === callType;
       const matchesNature = !nature || job?.natureOfWork === nature;
       const matchesCenter =
-        !serviceCenter || job?.assignedServiceCenter === serviceCenter;
+        !serviceCenter ||
+        String(
+          job?.assignedServiceCenter?._id || job?.assignedServiceCenter,
+        ) === String(serviceCenter);
+
       const matchesEngineer =
-        !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+        !serviceEngineer ||
+        String(
+          job?.assignedServiceEngineer?._id || job?.assignedServiceEngineer,
+        ) === String(serviceEngineer);
 
       const jobDateStr = toISODateInZone(job?.complaintDate);
       const matchesDateRange =

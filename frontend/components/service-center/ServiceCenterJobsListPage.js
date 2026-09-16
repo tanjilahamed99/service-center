@@ -151,20 +151,6 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
         onAssign={handleAssign}
       />
 
-      <ServiceCenterUpdateStatusModal
-        open={!!editTarget}
-        job={editTarget}
-        onClose={() => setEditTarget(null)}
-        onUpdateStatus={handleUpdateStatus}
-      />
-
-      <HoldJobModal
-        open={!!holdTarget}
-        job={holdTarget}
-        onClose={() => setHoldTarget(null)}
-        onHold={handleHold}
-      />
-
       <ViewLogsModal
         open={!!logsTarget}
         job={logsTarget}

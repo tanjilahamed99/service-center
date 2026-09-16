@@ -57,6 +57,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  console.log(stats);
+
   useEffect(() => {
     getAdminDashboardStats()
       .then((res) => setStats(res.data?.data))
@@ -90,8 +92,8 @@ export default function AdminDashboardPage() {
       icon: icon("M4 13l5 5L20 6"),
     },
     {
-      label: "Suspended Companies",
-      value: stats?.companies?.suspended?.toLocaleString() || 0,
+      label: "Inactive Companies",
+      value: stats?.companies?.inactive?.toLocaleString() || 0,
       tone: "red",
       icon: icon("M9.5 9.5l5 5M14.5 9.5l-5 5"),
     },
