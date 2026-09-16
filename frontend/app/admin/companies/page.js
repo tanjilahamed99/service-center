@@ -233,6 +233,24 @@ export default function CompaniesPage() {
     });
   };
 
+  const isCompanySubscriptionActive = (company) => {
+    const status = company?.status?.toLowerCase();
+    const toDate = company?.subscriptionPlan?.toDate;
+
+    if (!toDate || status !== "active") {
+      return false;
+    }
+
+    const expiryDate = new Date(toDate);
+    const today = new Date();
+
+    // Compare dates only
+    today.setHours(0, 0, 0, 0);
+    expiryDate.setHours(23, 59, 59, 999);
+
+    return expiryDate >= today;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -359,7 +377,13 @@ export default function CompaniesPage() {
                   </td>
 
                   <td className="whitespace-nowrap px-4 py-3.5">
-                    <StatusBadge status={company?.status || "Inactive"} />
+                    <StatusBadge
+                      status={
+                        isCompanySubscriptionActive(company)
+                          ? "Active"
+                          : "Inactive"
+                      }
+                    />
                   </td>
 
                   <td className="whitespace-nowrap px-4 py-3.5">
