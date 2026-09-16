@@ -58,3 +58,7 @@ export const getMySparePartStock = () =>
   API.get(`/service-center/getMySparePartStock`);
 export const getMySparePartTransactions = () =>
   API.get(`/service-center/getMySparePartTransactions`);
+
+// params: { status } (optional)
+export const getServiceCenterJobDataByStatus = (params = {}) =>
+  API.get(`/service-center/getMyJobDataByStatus`, { params });

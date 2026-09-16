@@ -14,6 +14,7 @@ const {
   serviceEngineerLoginByCenter,
   getMySparePartStock,
   getMySparePartTransactions,
+  serviceCenterJobsByStatus,
 } = require("../../controller/v1/service-center/serviceCenter");
 const { serviceCenterCheck } = require("../../middlewares/validatoin");
 
@@ -51,5 +52,8 @@ router.get(
   serviceCenterCheck,
   getMySparePartTransactions,
 );
+
+router.get("/getMyJobDataByStatus", serviceCenterCheck, serviceCenterJobsByStatus);
+
 
 module.exports = router;

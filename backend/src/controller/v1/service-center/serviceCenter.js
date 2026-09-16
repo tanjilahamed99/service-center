@@ -659,13 +659,11 @@ exports.getMySparePartStock = async (req, res) => {
     return res.status(200).json({ success: true, data: stock });
   } catch (error) {
     console.error("getMySparePartStock error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch stock",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch stock",
+      error: error.message,
+    });
   }
 };
 
@@ -693,12 +691,49 @@ exports.getMySparePartTransactions = async (req, res) => {
     return res.status(200).json({ success: true, data: transactions });
   } catch (error) {
     console.error("getMySparePartTransactions error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch transactions",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch transactions",
+      error: error.message,
+    });
+  }
+};
+
+exports.serviceCenterJobsByStatus = async (req, res) => {
+  try {
+    const serviceCenter = req.user._id;
+    const { status } = req.query;
+
+    console.log(status);
+
+    const filter = {
+      assignedServiceCenter: serviceCenter,
+    };
+
+    if (status === "Completed") {
+      // Completed tab → only completed jobs
+      filter.status = "Completed";
+    } else {
+      // Pending / active / no status → everything except completed
+      filter.status = { $ne: "Completed" };
+    }
+
+    const jobs = await Job.find(filter)
+      .populate("customer")
+      .populate("assignedServiceEngineer", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: jobs,
+    });
+  } catch (error) {
+    console.error("myJobs error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch jobs",
+      error: error.message,
+    });
   }
 };

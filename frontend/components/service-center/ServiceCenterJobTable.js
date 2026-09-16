@@ -179,6 +179,7 @@ export default function ServiceCenterJobsTable({
   onAssignJob,
   onViewLogs,
   onCancelJob,
+  hideActions,
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -484,10 +485,11 @@ export default function ServiceCenterJobsTable({
                 )}
 
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
-
-                <th className="whitespace-nowrap px-4 py-3 text-right">
-                  Actions
-                </th>
+                {!hideActions && (
+                  <th className="whitespace-nowrap px-4 py-3 text-right">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -649,7 +651,8 @@ export default function ServiceCenterJobsTable({
 
                   {/* Actions */}
                   <td className="whitespace-nowrap px-4 py-3.5">
-                    <div className="flex items-center justify-end">
+                    <div
+                      className={`items-center justify-end ${hideActions ? "hidden" : "flex"}`}>
                       <RowActions
                         job={job}
                         canAssign={canAssignRow(job)}

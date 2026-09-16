@@ -12,7 +12,25 @@ import DashboardLayout from "@/components/SideBar";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/service-center", icon: LayoutGrid },
-  { label: "Jobs", href: "/service-center/jobs", icon: ListChecks },
+  {
+    label: "Jobs",
+    href: "/service-engineer/jobs",
+    icon: ListChecks,
+    children: [
+      {
+        label: "Jobs",
+        href: "/service-center/jobs",
+      },
+      {
+        label: "Pending Jobs",
+        href: "/service-center/pending-job",
+      },
+      {
+        label: "Completed Jobs",
+        href: "/service-center/complete-job",
+      },
+    ],
+  },
   {
     label: "Service Engineers",
     href: "/service-center/engineers",

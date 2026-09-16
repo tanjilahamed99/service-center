@@ -1,8 +1,6 @@
 const Job = require("../../../models/Job");
 const Customer = require("../../../models/Customer");
-const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
-const bcrypt = require("bcrypt");
 const SparePartStock = require("../../../models/SparePartStock");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
 
@@ -36,7 +34,7 @@ exports.serviceEngineerJobs = async (req, res) => {
     }
 
     const filter = {
-      assignedServiceCenter: engineer.serviceCenter,
+      assignedServiceEngineer: req.user._id,
     };
     if (status) filter.status = status;
     if (callType) filter.callType = callType;
@@ -238,12 +236,10 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       assignedServiceEngineer: engineer._id,
     });
     if (!existing) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Job not found or not assigned to you",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Job not found or not assigned to you",
+      });
     }
 
     // Validate stock BEFORE touching anything, so a mid-way failure can't
@@ -329,13 +325,11 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       .json({ success: true, message: "Job closed", data: job });
   } catch (error) {
     console.error("serviceEngineerCloseJob error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to close job",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to close job",
+      error: error.message,
+    });
   }
 };
 
@@ -498,10 +492,9 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const serviceEngineer = req.user._id;
 
-    const serviceCenter =
-      await ServiceEngineer.findById(serviceEngineer).select("serviceCenter");
+    const myData = await ServiceEngineer.findById(serviceEngineer);
 
-    if (!serviceCenter) {
+    if (!myData) {
       return res.status(404).json({
         success: false,
         message:
@@ -520,33 +513,33 @@ exports.getDashboardStats = async (req, res) => {
       completedJobs,
     ] = await Promise.all([
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: { $in: OPEN_STATUSES },
         complaintDate: { $lte: new Date(now - 1 * DAY_MS) },
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: { $in: OPEN_STATUSES },
         complaintDate: { $lte: new Date(now - 3 * DAY_MS) },
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: { $in: OPEN_STATUSES },
         complaintDate: { $lte: new Date(now - 7 * DAY_MS) },
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: "Service Center Assigned",
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: "Hold",
       }),
       Job.countDocuments({
-        assignedServiceCenter: serviceCenter.serviceCenter,
+        assignedServiceEngineer: serviceEngineer,
         status: "Completed",
       }),
     ]);
@@ -600,6 +593,63 @@ exports.getMySparePartStock = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch stock",
+      error: error.message,
+    });
+  }
+};
+
+exports.myJobs = async (req, res) => {
+  try {
+    const serviceEngineer = req.user._id;
+    const { status } = req.query;
+
+    console.log(status);
+
+    const filter = { assignedServiceEngineer: serviceEngineer };
+    if (status) filter.status = status;
+
+    const jobs = await Job.find(filter)
+      .populate("customer")
+      .populate("assignedServiceCenter", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: jobs });
+  } catch (error) {
+    console.error("myJobs error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch jobs",
+      error: error.message,
+    });
+  }
+};
+
+// GET /service-engineer/account-status
+exports.getAccountStatus = async (req, res) => {
+  try {
+    const engineer = await ServiceEngineer.findById(req.user._id).select(
+      "status",
+    );
+    if (!engineer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Service engineer not found" });
+    }
+
+    const isInactive = engineer.status !== "Active";
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        isRestricted: isInactive,
+        reason: isInactive ? "inactive" : null,
+      },
+    });
+  } catch (error) {
+    console.error("getAccountStatus error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check account status",
       error: error.message,
     });
   }
