@@ -704,8 +704,6 @@ exports.serviceCenterJobsByStatus = async (req, res) => {
     const serviceCenter = req.user._id;
     const { status } = req.query;
 
-    console.log(status);
-
     const filter = {
       assignedServiceCenter: serviceCenter,
     };

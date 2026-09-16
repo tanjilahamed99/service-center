@@ -132,6 +132,7 @@ export default function UpdateJobStatusModal({
 
   return (
     <Modal
+      onClose={handleClose}
       open={open}
       title={`Update Status — ${job.complaintNumber ?? job._id}`}>
       <div className="space-y-4">

@@ -53,7 +53,7 @@ export default function AllocateModal({ open, sparePart, onClose, onDone }) {
   if (!sparePart) return null;
 
   return (
-    <Modal open={open} title={`Allocate — ${sparePart.spareName}`}>
+    <Modal open={open} onClose={handleClose} title={`Allocate — ${sparePart.spareName}`}>
       <div className="space-y-4">
         <p className="text-sm text-slate-500">
           {sparePart.companyStock} {sparePart.unit} available in the central

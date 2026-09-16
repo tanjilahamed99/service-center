@@ -36,7 +36,7 @@ export default function RestockModal({ open, sparePart, onClose, onDone }) {
   if (!sparePart) return null;
 
   return (
-    <Modal open={open} title={`Restock — ${sparePart.spareName}`}>
+    <Modal onClose={handleClose} open={open} title={`Restock — ${sparePart.spareName}`}>
       <div className="space-y-4">
         <p className="text-sm text-slate-500">Currently {sparePart.companyStock} {sparePart.unit} in the central store.</p>
         <div>
