@@ -10,7 +10,7 @@ import { toast } from "sonner";
 export default function DashboardLayout({
   children,
   navItems = [],
-  brandName = "Aceit Technologies",
+  brandName = "Service CRM",
   brandShortName = "AT",
 }) {
   const pathname = usePathname();

@@ -37,7 +37,7 @@ export default function ServiceCenterLayout({ children }) {
     <PrivateRoutes allowedRoles={["service-engineer"]}>
       <DashboardLayout
         navItems={NAV_ITEMS}
-        brandName="Aceit Technologies"
+        brandName="Service CRM"
         brandShortName="AT">
         {children}
       </DashboardLayout>

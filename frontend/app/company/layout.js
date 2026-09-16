@@ -72,7 +72,7 @@ export default function CompanyLayout({ children }) {
     <PrivateRoutes allowedRoles={["company"]}>
       <DashboardLayout
         navItems={NAV_ITEMS}
-        brandName="Aceit Technologies"
+        brandName="Service CRM"
         brandShortName="AT">
         {children}
       </DashboardLayout>

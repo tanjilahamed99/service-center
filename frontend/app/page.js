@@ -74,7 +74,7 @@ export default function LoginPage() {
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-electric-500/15 ring-1 ring-electric-400/40"
           />
           <span className="text-lg font-semibold tracking-tight text-white">
-            Aceit Technologies (P)ltd
+            Service CRM
           </span>
         </div>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
 
         {/* Footer note */}
         <p className="relative mt-10 hidden text-xs text-slate-500 lg:block">
-          &copy; {new Date().getFullYear()} Aceit Technologies (P)ltd. All
+          &copy; {new Date().getFullYear()} Service CRM (P). All
           systems operational.
         </p>
       </div>

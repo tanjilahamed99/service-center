@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: {
-    default: "Service CRM || Aceit Technologies (P) Ltd.",
-    template: "%s | Aceit Technologies",
+    default: "Service CRM",
+    template: "%s | Service CRM",
   },
   description:
-    "Service CRM by Aceit Technologies (P) Ltd. — manage complaints, service centers, and engineers from one platform.",
-  applicationName: "Aceit Technologies",
-  authors: [{ name: "Aceit Technologies (P) Ltd." }],
+    "Service CRM by  — manage complaints, service centers, and engineers from one platform.",
+  applicationName: "Service CRM",
+  authors: [{ name: "Service CRM" }],
 };
 
 export default function RootLayout({ children }) {
