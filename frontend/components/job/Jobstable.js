@@ -14,6 +14,7 @@ import {
   MapPin,
   Phone,
   CalendarRange,
+  GalleryHorizontal,
 } from "lucide-react";
 import { getJobCategoryOptions } from "@/actions/company";
 
@@ -123,11 +124,21 @@ function RowActions({
   onEditJob,
   onAssignJob,
   onViewLogs,
+  onViewImages, // NEW
   onCancelJob,
   size = "md",
 }) {
   return (
     <div className="flex items-center gap-1">
+      {job.status === "Completed" && (
+        <ActionButton
+          label="View Images"
+          Icon={GalleryHorizontal}
+          size={size}
+          onClick={() => onViewImages?.(job)} // was onViewLogs — now its own handler
+        />
+      )}
+
       {canAssign && (
         <ActionButton
           label="Assign Job"
@@ -185,6 +196,7 @@ export default function JobsTable({
   onAssignJob,
   onViewLogs,
   onCancelJob,
+    onViewImages, // NEW
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -716,6 +728,7 @@ export default function JobsTable({
                           onViewLogs={onViewLogs}
                           onCancelJob={onCancelJob}
                           size="sm"
+                          onViewImages={onViewImages} // NEW
                         />
                       </div>
                     </td>

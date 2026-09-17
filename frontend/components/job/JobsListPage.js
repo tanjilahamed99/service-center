@@ -13,6 +13,7 @@ import {
   getServiceCenters,
   getServiceEngineers,
 } from "@/actions/company";
+import ViewImagesModal from "./ViewImagesModal";
 
 const VARIANT_STATUS_FILTER = {
   registered: JOB_STATUS.REGISTERED,
@@ -34,6 +35,7 @@ export default function JobsListPage({ variant, title, subtitle }) {
   const [assignTarget, setAssignTarget] = useState(null); // array of job ids
   const [cancelTarget, setCancelTarget] = useState(null); // single job
   const [logsTarget, setLogsTarget] = useState(null); // single job
+  const [imagesTarget, setImagesTarget] = useState(null); // NEW — single job
 
   const fetchJobs = useCallback(
     async (extraParams = {}) => {
@@ -100,7 +102,6 @@ export default function JobsListPage({ variant, title, subtitle }) {
       {error && (
         <p className="mb-4 text-sm font-medium text-red-500">{error}</p>
       )}
-
       <JobsTable
         title={title}
         subtitle={subtitle}
@@ -115,8 +116,8 @@ export default function JobsListPage({ variant, title, subtitle }) {
         onAssignJob={(jobIds) => setAssignTarget(jobIds)}
         onViewLogs={(job) => setLogsTarget(job)}
         onCancelJob={(job) => setCancelTarget(job)}
+        onViewImages={(job) => setImagesTarget(job)} // NEW
       />
-
       <AssignJobModal
         open={!!assignTarget}
         jobIds={assignTarget ?? []}
@@ -124,19 +125,23 @@ export default function JobsListPage({ variant, title, subtitle }) {
         onAssign={handleAssign}
         serviceCenterOptions={serviceCenters} // NEW
       />
-
       <CancelJobModal
         open={!!cancelTarget}
         job={cancelTarget}
         onClose={() => setCancelTarget(null)}
         onCancelJob={handleCancel}
       />
-
       <ViewLogsModal
         open={!!logsTarget}
         job={logsTarget}
         onClose={() => setLogsTarget(null)}
       />
+      <ViewImagesModal
+        open={!!imagesTarget}
+        job={imagesTarget}
+        onClose={() => setImagesTarget(null)}
+      />{" "}
+      {/* NEW */}
     </>
   );
 }
