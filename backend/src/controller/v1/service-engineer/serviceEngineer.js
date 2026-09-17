@@ -3,6 +3,8 @@ const Customer = require("../../../models/Customer");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
 const SparePartStock = require("../../../models/SparePartStock");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
+const sendEmail = require("../../../utils/sendEmail");
+const generateServiceReportPDF = require("../../../utils/generateServiceReport");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -313,6 +315,79 @@ exports.serviceEngineerCloseJob = async (req, res) => {
         actor: `Service Engineer:${engineer._id}`,
       });
     }
+
+
+
+    // send otp to customer
+        const populatedJob = await Job.findById(job._id)
+          .populate("customer", "name mobileNumber email address")
+          .populate("company", "companyName")
+          .populate("assignedServiceEngineer", "name");
+    
+        const pdfBuffer = await generateServiceReportPDF(populatedJob);
+        const customerEmail =
+          populatedJob.customer?.email || "tanjil113355@gmail.com";
+    
+        const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+      <div style="background: #2563eb; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="color: #ffffff; margin: 0; font-size: 18px;">Service Report</h2>
+      </div>
+    
+      <div style="border: 1px solid #e2e8f0; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
+        <p style="margin: 0 0 12px;">Dear <strong>${populatedJob.customer?.name || "Customer"}</strong>,</p>
+        <p style="margin: 0 0 16px;">Your complaint has been solved. Please find the details below:</p>
+    
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 6px 0; color: #64748b; width: 40%;">Complaint No.</td>
+            <td style="padding: 6px 0; font-weight: bold;">${populatedJob.complaintNumber}</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 6px 0; color: #64748b;">Product</td>
+            <td style="padding: 6px 0;">${populatedJob.product || "-"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Status</td>
+            <td style="padding: 6px 0; color: #16a34a; font-weight: bold;">${populatedJob.status}</td>
+          </tr>
+          <tr style="background: #f8fafc;">
+            <td style="padding: 6px 0; color: #64748b;">Technician</td>
+            <td style="padding: 6px 0;">${populatedJob.assignedServiceEngineer?.name || "-"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;">Closed Date</td>
+            <td style="padding: 6px 0;">${new Date(populatedJob.solveDate).toLocaleString()}</td>
+          </tr>
+        </table>
+    
+        <p style="margin: 20px 0 0; font-size: 13px; color: #64748b;">
+          A detailed PDF report is attached to this email.
+        </p>
+    
+        <p style="margin: 20px 0 0;">
+          Thank you,<br/>
+          <strong>${populatedJob.company?.companyName || "Service Team"}</strong>
+        </p>
+      </div>
+    </div>
+    `;
+    
+        await sendEmail(
+          customerEmail,
+          `Your Complaint ${populatedJob.complaintNumber} has been Solved`,
+          {
+            html,
+            attachments: [
+              {
+                filename: `Complaint-${populatedJob.complaintNumber}.pdf`,
+                content: pdfBuffer,
+              },
+            ],
+          },
+        );
+    
+
 
     return res
       .status(200)

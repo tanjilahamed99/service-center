@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Modal from "../job/Modal";
-import UploadImage from "../UploadImage";
+import UploadImage, { uploadFileToImgBB } from "../UploadImage";
 import SparePartsPicker from "./SparePartsPicker";
 import { getJobCategories } from "@/actions/admin";
+import SignatureModal from "./SignatureModal";
 
 const inputClass =
   "w-full rounded-lg border border-gray-500 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
@@ -33,6 +34,7 @@ export default function UpdateJobStatusModal({
   const [form, setForm] = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
 
   // admin-managed category options, fetched from the backend
   const [holdSubStatusOptions, setHoldSubStatusOptions] = useState([]);
@@ -278,11 +280,43 @@ export default function UpdateJobStatusModal({
               value={form.closurePhotos}
               onChange={(urls) => update("closurePhotos", urls)}
             />
-            <UploadImage
-              label="Customer Signature"
-              value={form.customerSignature}
-              onChange={(url) => update("customerSignature", url)}
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-navy-900">
+                Customer Signature
+              </label>
+              {form.customerSignature ? (
+                <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.customerSignature}
+                    alt="Customer signature"
+                    className="h-16 rounded border border-slate-200 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSignatureModalOpen(true)}
+                    className="text-xs font-semibold text-electric-500 hover:underline">
+                    Re-sign
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSignatureModalOpen(true)}
+                  className="w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 py-3 text-sm font-medium text-slate-500 hover:bg-slate-100">
+                  Tap to Sign
+                </button>
+              )}
+            </div>
+
+            <SignatureModal
+              open={signatureModalOpen}
+              onClose={() => setSignatureModalOpen(false)}
+              onSave={(url) => update("customerSignature", url)}
+              uploadFn={uploadFileToImgBB}
             />
+
             <div>
               <label className="mb-1.5 block text-sm font-medium text-navy-900">
                 OTP (from customer)

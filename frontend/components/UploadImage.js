@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const IMGBB_API_KEY = "f6f078838eb85ba39146571c65470cb2"; // https://api.imgbb.com/
 
-async function uploadFileToImgBB(file) {
+export async function uploadFileToImgBB(file) {
   const formData = new FormData();
   formData.append("image", file);
 
