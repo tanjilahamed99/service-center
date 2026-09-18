@@ -90,36 +90,8 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
     }
   }
 
-  async function handleHold({
-    jobId,
-    holdSubStatus,
-    holdReason,
-    holdPhotos,
-    holdRemarks,
-  }) {
-    try {
-      await holdJob(jobId, {
-        holdSubStatus,
-        holdReason,
-        holdPhotos,
-        holdRemarks,
-      });
-      setHoldTarget(null);
-      await fetchJobs();
-    } catch (err) {
-      console.error("Failed to hold job", err);
-    }
-  }
 
-  async function handleUpdateStatus({ jobId, status, note }) {
-    try {
-      await updateJobStatus(jobId, { status, note });
-      setEditTarget(null);
-      await fetchJobs();
-    } catch (err) {
-      console.error("Failed to update status", err);
-    }
-  }
+
   if (loading) {
     return <p className="text-sm text-slate-400">Loading jobs…</p>;
   }

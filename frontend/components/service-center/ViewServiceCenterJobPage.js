@@ -13,6 +13,7 @@ import {
 import { JOB_STATUS } from "../job/Constants";
 import ViewLogsModal from "../job/Viewlogsmodal";
 import ServiceCenterJobsTable from "./ServiceCenterJobTable";
+import ServiceCenterAssignJobModal from "./ServiceCenterAssignModal";
 
 const VARIANT_STATUS_FILTER = {
   registered: JOB_STATUS.REGISTERED,
@@ -32,6 +33,8 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
 
   const [serviceEngineers, setServiceEngineers] = useState([]);
   const [logsTarget, setLogsTarget] = useState(null); // single job
+  const [assignTarget, setAssignTarget] = useState(null); // array of job ids
+
 
   const fetchJobs = useCallback(
     async (extraParams = {}) => {
@@ -60,6 +63,22 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
       .catch((err) => console.error("Failed to load service engineers", err));
   }, []);
 
+  async function handleAssign({ jobIds, serviceEngineer, scheduleDate, note }) {
+    try {
+      const { data } = await assignJob({
+        jobIds,
+        serviceEngineer,
+        scheduleDate,
+        note,
+      });
+      setAssignTarget(null);
+      await fetchJobs(); // simplest correct option: just re-pull from the server
+    } catch (err) {
+      console.error("Failed to assign job(s)", err);
+      // TODO: surface this in the modal instead of silently closing, if it supports an error prop
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-slate-400">Loading jobs…</p>;
   }
@@ -78,6 +97,15 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
         serviceEngineerOptions={serviceEngineers}
         hideActions={true}
         onViewLogs={(job) => setLogsTarget(job)}
+        onAssignJob={(jobIds) => setAssignTarget(jobIds)}
+      />
+
+      <ServiceCenterAssignJobModal
+        open={!!assignTarget}
+        jobIds={assignTarget ?? []}
+        serviceEngineerOptions={serviceEngineers}
+        onClose={() => setAssignTarget(null)}
+        onAssign={handleAssign}
       />
 
       <ViewLogsModal

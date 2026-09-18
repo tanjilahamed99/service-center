@@ -1,4 +1,3 @@
-import ServiceJobsListPage from "@/components/service-center/ServiceCenterJobsListPage";
 import ViewServiceCenterJobPage from "@/components/service-center/ViewServiceCenterJobPage";
 
 export default function JobsPage() {

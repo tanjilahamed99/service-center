@@ -66,30 +66,18 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
   );
 }
 
-function RowActions({
-  job,
-  canAssign,
-  canCancel,
-  onEditJob,
-  onAssignJob,
-  onViewLogs,
-  onCancelJob,
-  size = "md",
-  status,
-}) {
+function RowActions({ job, onAssignJob, onViewLogs, size = "md", status }) {
   return (
     <div className="flex items-center gap-1">
       {status !== "Completed" && (
         <>
-          {canAssign && (
-            <ActionButton
-              label="Assign Job"
-              Icon={UserPlus}
-              tone="electric"
-              size={size}
-              onClick={() => onAssignJob?.([job._id])}
-            />
-          )}
+          <ActionButton
+            label="Assign Job"
+            Icon={UserPlus}
+            tone="electric"
+            size={size}
+            onClick={() => onAssignJob?.([job._id])}
+          />
         </>
       )}
       <ActionButton
@@ -478,11 +466,10 @@ export default function ServiceCenterJobsTable({
                 )}
 
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
-                {!hideActions && (
-                  <th className="whitespace-nowrap px-4 py-3 text-right">
-                    Actions
-                  </th>
-                )}
+
+                <th className="whitespace-nowrap px-4 py-3 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
 

@@ -99,9 +99,12 @@ export default function UpdateJobStatusModal({
       if (!form.actualIssueFound || !form.correctiveActionTaken) {
         return setError("Select the issue found and the action taken.");
       }
+      if (form.closurePhotos.length <= 0)
+        return setError("minimum 1 closure Photo required");
       if (!form.customerSignature)
         return setError("Customer signature is required.");
       if (!form.otp) return setError("Enter the OTP sent to the customer.");
+
       setSubmitting(true);
       try {
         await onComplete(job._id, {
