@@ -196,7 +196,7 @@ export default function JobsTable({
   onAssignJob,
   onViewLogs,
   onCancelJob,
-    onViewImages, // NEW
+  onViewImages, // NEW
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -633,6 +633,24 @@ export default function JobsTable({
 
                             <span className="whitespace-nowrap">
                               {job.customer.address}
+                            </span>
+                          </a>
+                        )}
+
+                        {job.closureLocation?.latitude && (
+                          <a
+                            href={`https://www.google.com/maps?q=${job.closureLocation.latitude},${job.closureLocation.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-emerald-600 transition-colors hover:text-emerald-800 hover:underline"
+                            title="Where the engineer closed this job">
+                            <MapPin
+                              size={13}
+                              strokeWidth={1.75}
+                              className="shrink-0"
+                            />
+                            <span className="whitespace-nowrap">
+                              Engineer's closure location
                             </span>
                           </a>
                         )}

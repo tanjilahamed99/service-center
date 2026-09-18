@@ -110,6 +110,12 @@ const JobSchema = new mongoose.Schema(
     // Misc
     uploadFile: [{ type: String }], // path/URL of file attached at creation
     logs: [LogEntrySchema],
+    closureLocation: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      accuracy: { type: Number }, // meters — how confident the device is in this reading
+      capturedAt: { type: Date },
+    },
   },
   { timestamps: true },
 );

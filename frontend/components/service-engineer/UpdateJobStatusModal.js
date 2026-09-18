@@ -41,6 +41,42 @@ export default function UpdateJobStatusModal({
   const [actualIssueOptions, setActualIssueOptions] = useState([]);
   const [correctiveActionOptions, setCorrectiveActionOptions] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  // add alongside your other useState hooks:
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
+
+  function captureLocation() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setLocationError("Geolocation isn't supported on this device.");
+        resolve(null);
+        return;
+      }
+      setLocating(true);
+      setLocationError("");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocating(false);
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          setLocating(false);
+          // err.code: 1 = permission denied, 2 = position unavailable, 3 = timeout
+          setLocationError(
+            err.code === 1
+              ? "Location permission denied. You can still submit without it."
+              : "Couldn't get your location. You can still submit without it.",
+          );
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      );
+    });
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -107,6 +143,8 @@ export default function UpdateJobStatusModal({
 
       setSubmitting(true);
       try {
+        const closureLocation = await captureLocation(); // null if denied/unavailable — fine either way
+
         await onComplete(job._id, {
           actualIssueFound: form.actualIssueFound,
           correctiveActionTaken: form.correctiveActionTaken,
@@ -116,10 +154,11 @@ export default function UpdateJobStatusModal({
               quantity,
               remarks,
             }),
-          ), // strip spareName — it's UI-display-only, backend doesn't need it
+          ),
           closurePhotos: form.closurePhotos,
           customerSignature: form.customerSignature,
           otp: form.otp,
+          ...(closureLocation ? { closureLocation } : {}),
         });
         handleClose();
       } catch (err) {
@@ -335,6 +374,12 @@ export default function UpdateJobStatusModal({
         )}
 
         {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+        {locating && (
+          <p className="text-xs text-slate-400">Getting your location…</p>
+        )}
+        {locationError && (
+          <p className="text-xs text-amber-600">{locationError}</p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button
