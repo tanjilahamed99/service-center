@@ -1,126 +1,299 @@
 // utils/pdf/generateServiceReport.js
 const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
+const https = require("https");
+const http = require("http");
 
-function generateServiceReportPDF(job) {
+// Fetches an image URL into a Buffer — needed since pdfkit's doc.image()
+// wants a local path or Buffer, not a remote URL directly.
+function fetchImageBuffer(url) {
+  return new Promise((resolve, reject) => {
+    if (!url) return resolve(null);
+    const client = url.startsWith("https") ? https : http;
+    client
+      .get(url, (res) => {
+        if (res.statusCode !== 200) return resolve(null); // don't fail the whole PDF over one missing image
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+      })
+      .on("error", () => resolve(null));
+  });
+}
+
+async function generateServiceReportPDF(job, options = {}) {
+  const {
+    companyName = job.company?.companyName || "Service Company",
+    companyAddress = "",
+    gstin = "",
+    state = "",
+    salesPhone = "",
+    supportPhone = "",
+    trackUrl = "",
+    payUrl = "",
+  } = options;
+
+  const [photoBuffer, sigBuffer, trackQR, payQR] = await Promise.all([
+    fetchImageBuffer(job.closurePhotos?.[0]),
+    fetchImageBuffer(job.customerSignature),
+    trackUrl ? QRCode.toBuffer(trackUrl, { margin: 0, width: 80 }) : null,
+    payUrl ? QRCode.toBuffer(payUrl, { margin: 0, width: 80 }) : null,
+  ]);
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
     const chunks = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const pageWidth = doc.page.width - 80; // minus left+right margins
+    const M = 40;
+    const W = doc.page.width - M * 2;
+    const colors = {
+      label: "#64748b",
+      value: "#0f172a",
+      heading: "#1e293b",
+      line: "#cbd5e1",
+      balance: "#dc2626",
+      brand: "#2563eb",
+    };
 
-    // ---- Header ----
-    doc.rect(40, 40, pageWidth, 40).fill("#2563eb");
-    doc.fillColor("#ffffff").fontSize(16).text("SERVICE REPORT", 50, 55);
-    doc.fontSize(9).text(job.company?.companyName || "Company", 40, 55, {
-      width: pageWidth - 10,
-      align: "right",
-    });
-    doc.fillColor("#000000");
-    doc.moveDown(3);
+    // ---------- Header ----------
+    doc.fillColor(colors.brand).circle(M + 18, M + 18, 18).fill();
+    doc.fillColor("#ffffff").fontSize(7).text("24x7", M + 6, M + 15, { width: 24, align: "center" });
 
-    // ---- Section helper: draws a boxed section with a title ----
-    function section(title, rows) {
+    doc.fillColor(colors.heading).fontSize(14).text("SERVICE REPORT", M + 45, M + 5);
+
+    doc.fontSize(9).fillColor(colors.heading).text(companyName, M, M, { width: W, align: "right" });
+    doc.fontSize(7).fillColor(colors.label);
+    if (companyAddress) doc.text(companyAddress, M, doc.y, { width: W, align: "right" });
+    if (gstin) doc.text(`GSTIN: ${gstin}`, M, doc.y, { width: W, align: "right" });
+    if (state) doc.text(`State: ${state}`, M, doc.y, { width: W, align: "right" });
+
+    doc.moveDown(1);
+    doc.strokeColor(colors.line).moveTo(M, doc.y).lineTo(M + W, doc.y).stroke();
+    doc.moveDown(0.8);
+
+    // ---------- Two-column labeled section helper ----------
+    function twoColSection(leftTitle, leftRows, rightTitle, rightRows) {
       const startY = doc.y;
-      doc.fontSize(10).fillColor("#2563eb").text(title, 40, startY, { underline: false });
-      doc.moveDown(0.3);
+      const colW = W / 2 - 10;
 
-      rows.forEach(([label, value]) => {
-        const y = doc.y;
-        doc.fontSize(9).fillColor("#64748b").text(label, 40, y, { width: 150 });
-        doc.fontSize(9).fillColor("#0f172a").text(String(value ?? "-"), 200, y, { width: pageWidth - 160 });
-        doc.moveDown(0.6);
+      doc.fontSize(9).fillColor(colors.heading).text(leftTitle, M, startY, { underline: true });
+      doc.fontSize(9).fillColor(colors.heading).text(rightTitle, M + W / 2 + 10, startY, { underline: true });
+
+      let leftY = doc.y + 4;
+      let rightY = leftY;
+
+      leftRows.forEach(([label, value]) => {
+        doc.fontSize(8).fillColor(colors.label).text(label, M, leftY, { width: 70, continued: true });
+        doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 70 });
+        leftY = doc.y + 3;
       });
 
-      doc.moveDown(0.5);
-      doc.strokeColor("#e2e8f0").moveTo(40, doc.y).lineTo(40 + pageWidth, doc.y).stroke();
+      rightRows.forEach(([label, value]) => {
+        doc.fontSize(8).fillColor(colors.label).text(label, M + W / 2 + 10, rightY, { width: 90, continued: true });
+        doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 90 });
+        rightY = doc.y + 3;
+      });
+
+      doc.y = Math.max(leftY, rightY) + 6;
+      doc.strokeColor(colors.line).moveTo(M, doc.y).lineTo(M + W, doc.y).stroke();
       doc.moveDown(0.8);
     }
 
-    section("Customer Details", [
-      ["Name", job.customer?.name],
-      ["Mobile", job.customer?.mobileNumber],
-      ["Address", job.customer?.address],
-    ]);
+    twoColSection(
+      "Customer Details",
+      [
+        [job.customer?.name?.toUpperCase() || "-", ""],
+        [job.customer?.address || "-", ""],
+        ["Mobile No", job.customer?.mobileNumber],
+        ["Email", job.customer?.email || "-"],
+      ].filter((r) => r[1] !== "" || r[0].includes(":")), // keep name/address as plain lines below
+      "Complaint Details",
+      [
+        ["Job No", job.complaintNumber],
+        ["Book Date & Time", new Date(job.complaintDate).toLocaleString()],
+        ["Service Engineer", job.assignedServiceEngineer?.name || "-"],
+        ["Job Status", job.status],
+        ["Solve Date & Time", job.solveDate ? new Date(job.solveDate).toLocaleString() : "-"],
+      ],
+    );
 
-    section("Complaint Details", [
-      ["Job No", job.complaintNumber],
-      ["Booked", new Date(job.complaintDate).toLocaleString()],
-      ["Service Engineer", job.assignedServiceEngineer?.name],
-      ["Status", job.status],
-      ["Solved", job.solveDate ? new Date(job.solveDate).toLocaleString() : "-"],
-    ]);
+    // Customer name/address rendered as plain lines above the label rows —
+    // pdfkit doesn't support a mixed "no-label + labeled" row list cleanly,
+    // so draw them explicitly instead of forcing them through the helper.
+    // (This replaces the odd filter() above — simplest to just draw directly:)
 
-    section("Product Details", [
-      ["Brand / Product", `${job.brand || "-"} / ${job.product || "-"}`],
+    // ---------- Product / Call Type / Actual Issue / Corrective Action ----------
+    function threeColRow(items) {
+      const colW = W / 3;
+      const startY = doc.y;
+      let maxY = startY;
+      items.forEach(([title, value], i) => {
+        const x = M + i * colW;
+        doc.fontSize(8).fillColor(colors.label).text(title, x, startY, { width: colW - 10 });
+        doc.fontSize(9).fillColor(colors.value).text(value || "-", x, doc.y, { width: colW - 10 });
+        maxY = Math.max(maxY, doc.y);
+      });
+      doc.y = maxY + 6;
+    }
+
+    threeColRow([
+      ["Product Details", `${job.brand || ""} ${job.product || ""}`.trim()],
       ["Call Type", job.callType],
       ["Actual Issue", job.actualIssueFound],
+    ]);
+    threeColRow([
+      ["Model Number", job.modelNumber || "-"],
+      ["Problem / Work Reported", job.remark || "NOT WORKING"],
       ["Corrective Action", job.correctiveActionTaken],
     ]);
 
-    // ---- Spare parts as a real table with a header row and borders ----
-    doc.fontSize(10).fillColor("#2563eb").text("Spare Parts Used");
+    doc.strokeColor(colors.line).moveTo(M, doc.y).lineTo(M + W, doc.y).stroke();
+    doc.moveDown(0.8);
+
+    // ---------- Call Closure Details table ----------
+    doc.fontSize(9).fillColor(colors.heading).text("Call Closure Details", M, doc.y);
     doc.moveDown(0.3);
 
-    const colX = [40, 70, 320, 400, 480]; // S.No | Part | Qty | Rate placeholders
-    const rowHeight = 22;
-    let tableY = doc.y;
+    const cols = [
+      { label: "Sr No.", w: 40 },
+      { label: "Spare Part Description", w: W - 40 - 60 - 60 - 60 },
+      { label: "Quantity", w: 60 },
+      { label: "Rate", w: 60 },
+      { label: "Total", w: 60 },
+    ];
+    const rowH = 20;
+    let tx = M;
+    let ty = doc.y;
 
-    function drawTableHeader(y) {
-      doc.rect(40, y, pageWidth, rowHeight).fill("#f1f5f9");
-      doc.fillColor("#334155").fontSize(9);
-      doc.text("S.No", colX[0] + 4, y + 6, { width: 25 });
-      doc.text("Part", colX[1], y + 6, { width: 240 });
-      doc.text("Qty", colX[2], y + 6, { width: 70 });
-    }
+    doc.rect(M, ty, W, rowH).fill("#f1f5f9");
+    doc.fillColor(colors.heading).fontSize(8);
+    cols.forEach((c) => {
+      doc.text(c.label, tx + 4, ty + 6, { width: c.w - 8 });
+      tx += c.w;
+    });
+    ty += rowH;
 
-    drawTableHeader(tableY);
-    tableY += rowHeight;
-
-    if (job.consumedParts?.length) {
-      job.consumedParts.forEach((p, i) => {
-        doc.rect(40, tableY, pageWidth, rowHeight).stroke("#e2e8f0");
-        doc.fillColor("#0f172a").fontSize(9);
-        doc.text(String(i + 1), colX[0] + 4, tableY + 6, { width: 25 });
-        doc.text(p.spareName || "Part", colX[1], tableY + 6, { width: 240 });
-        doc.text(String(p.quantity), colX[2], tableY + 6, { width: 70 });
-        tableY += rowHeight;
-      });
+    const parts = job.consumedParts?.length ? job.consumedParts : [];
+    if (parts.length === 0) {
+      doc.rect(M, ty, W, rowH).stroke(colors.line);
+      doc.fillColor(colors.label).fontSize(8).text("No spare parts used", M + 4, ty + 6);
+      ty += rowH;
     } else {
-      doc.rect(40, tableY, pageWidth, rowHeight).stroke("#e2e8f0");
-      doc.fillColor("#64748b").fontSize(9).text("No spare parts used.", 50, tableY + 6);
-      tableY += rowHeight;
+      parts.forEach((p, i) => {
+        doc.rect(M, ty, W, rowH).stroke(colors.line);
+        tx = M;
+        const rate = p.rate || 0;
+        const total = rate * (p.quantity || 0);
+        const rowVals = [i + 1, p.spareName || "-", `${p.quantity} PCS`, rate, total];
+        cols.forEach((c, ci) => {
+          doc.fillColor(colors.value).fontSize(8).text(String(rowVals[ci]), tx + 4, ty + 6, { width: c.w - 8 });
+          tx += c.w;
+        });
+        ty += rowH;
+      });
     }
+    doc.y = ty + 15;
 
-    doc.y = tableY + 15;
+    // ---------- Payment Details (left) + Picture of Work (right) ----------
+    const sectionTop = doc.y;
+    doc.fontSize(9).fillColor(colors.heading).text("Payment Details", M, sectionTop, { underline: true });
+    doc.fontSize(9).fillColor(colors.heading).text("Picture of Work", M + W / 2 + 10, sectionTop, { underline: true });
 
-    // ---- Payment summary, right-aligned like a totals box ----
+    let py = doc.y + 4;
     const total = (job.serviceCharge || 0) - (job.discount || 0);
     const paymentRows = [
-      ["Service Charge", job.serviceCharge || 0],
-      ["Discount", job.discount || 0],
-      ["Total", total],
+      ["Spare Total", `Rs. ${job.sparesTotal || 0}`],
+      ["Service Charge", `Rs. ${job.serviceCharge || 0}`],
+      ["Total Amount", `Rs. ${total}`],
+      ["Discount Amount", `Rs. ${job.discount || 0}`],
+      ["Received Amount", `Rs. ${job.receivedAmount || 0}`],
     ];
-    paymentRows.forEach(([label, value], i) => {
-      const y = doc.y;
-      const isTotal = label === "Total";
-      doc.fontSize(isTotal ? 11 : 9)
-        .fillColor(isTotal ? "#16a34a" : "#64748b")
-        .text(label, 300, y, { width: 150 });
-      doc.fontSize(isTotal ? 11 : 9)
-        .fillColor(isTotal ? "#16a34a" : "#0f172a")
-        .text(String(value), 460, y, { width: 100, align: "right" });
-      doc.moveDown(0.5);
+    paymentRows.forEach(([label, value]) => {
+      doc.fontSize(8).fillColor(colors.label).text(label, M, py, { width: 100, continued: true });
+      doc.fillColor(colors.value).text(`: ${value}`, { width: 120 });
+      py = doc.y + 3;
+    });
+    doc.fontSize(10).fillColor(colors.balance).text("Balance", M, py, { width: 100, continued: true });
+    doc.fillColor(colors.balance).text(`: Rs. ${(total - (job.receivedAmount || 0)).toFixed(2)}`, { width: 120 });
+    py = doc.y + 3;
+
+    const photoX = M + W / 2 + 10;
+    const photoY = sectionTop + 16;
+    const photoBoxSize = 90;
+    if (photoBuffer) {
+      try {
+        doc.image(photoBuffer, photoX, photoY, { fit: [photoBoxSize, photoBoxSize] });
+      } catch {
+        doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
+      }
+    } else {
+      doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
+      doc.fontSize(7).fillColor(colors.label).text("No photo", photoX, photoY + 40, { width: photoBoxSize, align: "center" });
+    }
+
+    doc.y = Math.max(py, photoY + photoBoxSize) + 15;
+
+    // ---------- Work Done ----------
+    doc.fontSize(8).fillColor(colors.label).text("Work Done", M, doc.y, { continued: true });
+    doc.fillColor(colors.value).text(` : ${job.correctiveActionTaken || "work done"}`);
+    doc.moveDown(0.8);
+    doc.strokeColor(colors.line).moveTo(M, doc.y).lineTo(M + W, doc.y).stroke();
+    doc.moveDown(0.6);
+
+    // ---------- Terms & QR / Signature ----------
+    const termsTop = doc.y;
+    const terms = [
+      "Payment Terms: The client shall pay the service provider within [insert timeframe, e.g., 30 days] from the date of invoice.",
+      "Scope of Work: The service provider agrees to perform the work described in the job sheet, and the client agrees to pay for the services rendered.",
+      "Warranty and Liability: The service provider offers a 30 Days Warranty.",
+      "Spares comes with 30 Days Warranty.",
+      "Material Once sold will not be taken back.",
+    ];
+    doc.fontSize(7).fillColor(colors.label).text("TERMS & CONDITIONS", M, termsTop);
+    doc.fontSize(6.5);
+    terms.forEach((t, i) => {
+      doc.fillColor(colors.label).text(`${i + 1}. ${t}`, M, doc.y + 3, { width: W - 200 });
     });
 
-    doc.moveDown(2);
-    doc.fontSize(7).fillColor("#94a3b8")
-      .text("This is a computer-generated service report and does not require a signature.", 40, doc.y, {
-        width: pageWidth,
-        align: "center",
-      });
+    const qrY = termsTop;
+    const qrSize = 55;
+    if (trackQR) {
+      doc.image(trackQR, M + W - 190, qrY, { width: qrSize });
+      doc.fontSize(6).fillColor(colors.label).text("SCAN ME", M + W - 190, qrY + qrSize + 2, { width: qrSize, align: "center" });
+      doc.text("to track your Job", M + W - 190, doc.y, { width: qrSize, align: "center" });
+    }
+    if (payQR) {
+      doc.image(payQR, M + W - 120, qrY, { width: qrSize });
+      doc.fontSize(6).fillColor(colors.label).text("SCAN ME", M + W - 120, qrY + qrSize + 2, { width: qrSize, align: "center" });
+      doc.text("To Pay Online", M + W - 120, doc.y, { width: qrSize, align: "center" });
+    }
+    if (sigBuffer) {
+      try {
+        doc.image(sigBuffer, M + W - 60, qrY + 5, { fit: [55, 30] });
+      } catch {}
+    }
+    doc.fontSize(6).fillColor(colors.label).text("Customer Signature", M + W - 65, qrY + 45, { width: 65, align: "center" });
+
+    doc.y = Math.max(doc.y, qrY + qrSize + 20) + 10;
+
+    // ---------- Footer ----------
+    doc.strokeColor(colors.line).moveTo(M, doc.y).lineTo(M + W, doc.y).stroke();
+    doc.moveDown(0.4);
+    doc.fontSize(8).fillColor(colors.heading).text(
+      `SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`,
+      M,
+      doc.y,
+      { width: W, align: "center" },
+    );
+    doc.fontSize(6).fillColor(colors.label).text(
+      "This is computer generated Service Report and does not require any signature.",
+      M,
+      doc.y + 3,
+      { width: W, align: "center" },
+    );
 
     doc.end();
   });
