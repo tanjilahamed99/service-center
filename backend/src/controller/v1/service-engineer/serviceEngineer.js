@@ -317,88 +317,88 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     }
 
     // send otp to customer
-    const populatedJob = await Job.findById(job._id)
-      .populate("customer", "name mobileNumber email address")
-      .populate("company", "companyName")
-      .populate("assignedServiceEngineer", "name");
+//     const populatedJob = await Job.findById(job._id)
+//       .populate("customer", "name mobileNumber email address")
+//       .populate("company", "companyName")
+//       .populate("assignedServiceEngineer", "name");
 
-    const pdfBuffer = await generateServiceReportPDF(populatedJob, {
-      companyAddress:
-        "426, NH 58, Gayatri Garden Partapur Bypass, Meerut, U.P.",
-      gstin: "09ABDC55295N1ZP",
-      state: "Uttar Pradesh",
-      salesPhone: "9760730500",
-      supportPhone: "9012665500, 9012665543",
-      trackUrl: `https://yourapp.com/track/${populatedJob.complaintNumber}`,
-      payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
-    });
+//     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
+//       companyAddress:
+//         "426, NH 58, Gayatri Garden Partapur Bypass, Meerut, U.P.",
+//       gstin: "09ABDC55295N1ZP",
+//       state: "Uttar Pradesh",
+//       salesPhone: "9760730500",
+//       supportPhone: "9012665500, 9012665543",
+//       trackUrl: `https://yourapp.com/track/${populatedJob.complaintNumber}`,
+//       payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
+//     });
 
-    const customerEmail =
-      populatedJob.customer?.email || "tanjil113355@gmail.com";
+//     const customerEmail =
+//       populatedJob.customer?.email || "tanjil113355@gmail.com";
 
-    const total =
-      (populatedJob.serviceCharge || 0) - (populatedJob.discount || 0);
-    const receivedAmount = populatedJob.receivedAmount || 0;
-    const balanceAmount = total - receivedAmount;
+//     const total =
+//       (populatedJob.serviceCharge || 0) - (populatedJob.discount || 0);
+//     const receivedAmount = populatedJob.receivedAmount || 0;
+//     const balanceAmount = total - receivedAmount;
 
-    const html = `
-<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b; font-size: 14px; line-height: 1.6;">
-  <p style="margin: 0 0 4px;">Dear <strong>${(populatedJob.customer?.name || "Customer").toUpperCase()}</strong>,</p>
-  <p style="margin: 0 0 16px;">Your Complaint has been Solved, Please find below all details,</p>
+//     const html = `
+// <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1e293b; font-size: 14px; line-height: 1.6;">
+//   <p style="margin: 0 0 4px;">Dear <strong>${(populatedJob.customer?.name || "Customer").toUpperCase()}</strong>,</p>
+//   <p style="margin: 0 0 16px;">Your Complaint has been Solved, Please find below all details,</p>
 
-  <p style="margin: 0;">Date : <strong>${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</strong></p>
-  <p style="margin: 0;">Time : <strong>${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</strong></p>
-  <p style="margin: 0;">Comp. No : <strong>${populatedJob.complaintNumber}</strong></p>
-  <p style="margin: 0;">Category : <strong>${(populatedJob.product || "-").toUpperCase()}</strong></p>
-  <p style="margin: 0;">Product : <strong>${populatedJob.product || "-"}</strong></p>
-  <p style="margin: 0;">Status : <strong>${populatedJob.status}</strong></p>
-  <p style="margin: 0;">Technician Name : <strong>${populatedJob.assignedServiceEngineer?.name || "-"}</strong></p>
-  <p style="margin: 0;">Technician Remark : <strong>${populatedJob.correctiveActionTaken || "work done"}</strong></p>
-  <p style="margin: 0;">Closed Date : <span style="color: #16a34a; font-weight: bold;">${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").join("-")} ${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span></p>
-  <p style="margin: 0;">Total Amount : <span style="color: #16a34a; font-weight: bold;">${total.toFixed(2)}</span></p>
-  <p style="margin: 0;">Received Amount : <span style="color: #16a34a; font-weight: bold;">${receivedAmount.toFixed(2)}</span></p>
-  <p style="margin: 0 0 16px;">Balance Amount : <span style="color: #16a34a; font-weight: bold;">${balanceAmount.toFixed(2)}</span></p>
+//   <p style="margin: 0;">Date : <strong>${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</strong></p>
+//   <p style="margin: 0;">Time : <strong>${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</strong></p>
+//   <p style="margin: 0;">Comp. No : <strong>${populatedJob.complaintNumber}</strong></p>
+//   <p style="margin: 0;">Category : <strong>${(populatedJob.product || "-").toUpperCase()}</strong></p>
+//   <p style="margin: 0;">Product : <strong>${populatedJob.product || "-"}</strong></p>
+//   <p style="margin: 0;">Status : <strong>${populatedJob.status}</strong></p>
+//   <p style="margin: 0;">Technician Name : <strong>${populatedJob.assignedServiceEngineer?.name || "-"}</strong></p>
+//   <p style="margin: 0;">Technician Remark : <strong>${populatedJob.correctiveActionTaken || "work done"}</strong></p>
+//   <p style="margin: 0;">Closed Date : <span style="color: #16a34a; font-weight: bold;">${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").join("-")} ${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span></p>
+//   <p style="margin: 0;">Total Amount : <span style="color: #16a34a; font-weight: bold;">${total.toFixed(2)}</span></p>
+//   <p style="margin: 0;">Received Amount : <span style="color: #16a34a; font-weight: bold;">${receivedAmount.toFixed(2)}</span></p>
+//   <p style="margin: 0 0 16px;">Balance Amount : <span style="color: #16a34a; font-weight: bold;">${balanceAmount.toFixed(2)}</span></p>
 
-  <p style="margin: 0;">Thank you,</p>
-  <p style="margin: 0;"><strong>${populatedJob.company?.companyName || "Service Team"}</strong>,</p>
-  <p style="margin: 0;">Helpline No.-${populatedJob.company?.supportPhone || "-"}</p>
-</div>
-`;
+//   <p style="margin: 0;">Thank you,</p>
+//   <p style="margin: 0;"><strong>${populatedJob.company?.companyName || "Service Team"}</strong>,</p>
+//   <p style="margin: 0;">Helpline No.-${populatedJob.company?.supportPhone || "-"}</p>
+// </div>
+// `;
 
-    const text = `Dear ${(populatedJob.customer?.name || "Customer").toUpperCase()},
-Your Complaint has been Solved, Please find below all details,
+//     const text = `Dear ${(populatedJob.customer?.name || "Customer").toUpperCase()},
+// Your Complaint has been Solved, Please find below all details,
 
-Date : ${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-Time : ${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
-Comp. No : ${populatedJob.complaintNumber}
-Category : ${(populatedJob.product || "-").toUpperCase()}
-Product : ${populatedJob.product || "-"}
-Status : ${populatedJob.status}
-Technician Name : ${populatedJob.assignedServiceEngineer?.name || "-"}
-Technician Remark : ${populatedJob.correctiveActionTaken || "work done"}
-Closed Date : ${new Date(populatedJob.solveDate).toLocaleString()}
-Total Amount : ${total.toFixed(2)}
-Received Amount : ${receivedAmount.toFixed(2)}
-Balance Amount : ${balanceAmount.toFixed(2)}
+// Date : ${new Date(populatedJob.solveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+// Time : ${new Date(populatedJob.solveDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+// Comp. No : ${populatedJob.complaintNumber}
+// Category : ${(populatedJob.product || "-").toUpperCase()}
+// Product : ${populatedJob.product || "-"}
+// Status : ${populatedJob.status}
+// Technician Name : ${populatedJob.assignedServiceEngineer?.name || "-"}
+// Technician Remark : ${populatedJob.correctiveActionTaken || "work done"}
+// Closed Date : ${new Date(populatedJob.solveDate).toLocaleString()}
+// Total Amount : ${total.toFixed(2)}
+// Received Amount : ${receivedAmount.toFixed(2)}
+// Balance Amount : ${balanceAmount.toFixed(2)}
 
-Thank you,
-${populatedJob.company?.companyName || "Service Team"},
-Helpline No.-${populatedJob.company?.supportPhone || "-"}`;
+// Thank you,
+// ${populatedJob.company?.companyName || "Service Team"},
+// Helpline No.-${populatedJob.company?.supportPhone || "-"}`;
 
-    await sendEmail(
-      customerEmail,
-      `Complaint-${populatedJob.complaintNumber}`,
-      {
-        html,
-        text,
-        attachments: [
-          {
-            filename: `Complaint-${populatedJob.complaintNumber}.pdf`,
-            content: pdfBuffer,
-          },
-        ],
-      },
-    );
+//     await sendEmail(
+//       customerEmail,
+//       `Complaint-${populatedJob.complaintNumber}`,
+//       {
+//         html,
+//         text,
+//         attachments: [
+//           {
+//             filename: `Complaint-${populatedJob.complaintNumber}.pdf`,
+//             content: pdfBuffer,
+//           },
+//         ],
+//       },
+//     );
 
     return res
       .status(200)
