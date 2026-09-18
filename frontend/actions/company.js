@@ -140,3 +140,9 @@ export const serviceCenterLogin = (id) =>
   API.post(`/company/serviceCenterLogin/${id}`);
 export const serviceEngineerLogin = (id) =>
   API.post(`/company/serviceEngineerLogin/${id}`);
+
+export const getAllSparePartTransactions = (params = {}) =>
+  API.get(`/company/getSparePartTransactions`, { params });
+
+export const getSparePartStockByCenter = (params = {}) =>
+  API.get(`/company/getSparePartStockByCenter`, { params });
