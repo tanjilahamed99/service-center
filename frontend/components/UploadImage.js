@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { compressImage } from "@/config/compressImage";
 
 const IMGBB_API_KEY = "f6f078838eb85ba39146571c65470cb2"; // https://api.imgbb.com/
 
@@ -17,18 +18,9 @@ export async function uploadFileToImgBB(file) {
   if (!data.success) {
     throw new Error(data.error?.message || "Upload failed");
   }
-  return data.data.url; // direct image link
+  return data.data.url;
 }
 
-/**
- * Reusable ImgBB uploader.
- *
- * Single mode:   <UploadImage value={url} onChange={(url) => ...} />
- * Multiple mode: <UploadImage multiple min={2} max={5} value={urls} onChange={(urls) => ...} />
- *
- * `value` / `onChange` always deal in URL strings (or arrays of them),
- * never raw File objects — so parent state is ready to submit as-is.
- */
 export default function UploadImage({
   multiple = false,
   min = 0,
@@ -42,11 +34,6 @@ export default function UploadImage({
 
   const urls = multiple ? (value ?? []) : value ? [value] : [];
 
-  // Mirrors `urls` but updates synchronously the instant an upload finishes,
-  // instead of waiting for the value prop to round-trip back from the parent
-  // on the next render. Without this, firing off two uploads back-to-back
-  // (e.g. picking files twice quickly) would let the second one read a
-  // stale `urls` array and overwrite the first result instead of merging.
   const latestUrlsRef = useRef(urls);
   useEffect(() => {
     latestUrlsRef.current = urls;
@@ -69,11 +56,17 @@ export default function UploadImage({
       setError("");
       setUploading(true);
       try {
-        const uploaded = await Promise.all(files.map(uploadFileToImgBB));
+        // Compress each file before it ever hits ImgBB — a raw camera
+        // capture can be 5–12MB; this brings it down to ~1MB without a
+        // visible quality loss on screen.
+        const compressedFiles = await Promise.all(files.map(compressImage));
+        const uploaded = await Promise.all(
+          compressedFiles.map(uploadFileToImgBB),
+        );
 
         if (multiple) {
           const next = [...latestUrlsRef.current, ...uploaded];
-          latestUrlsRef.current = next; // update before onChange, synchronously
+          latestUrlsRef.current = next;
           onChange?.(next);
         } else {
           latestUrlsRef.current = uploaded.slice(0, 1);
@@ -130,7 +123,7 @@ export default function UploadImage({
             htmlFor={inputId}
             className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-center transition hover:border-electric-400 hover:bg-slate-100">
             <span className="text-xs text-slate-400">
-              {uploading ? "Uploading…" : "+ Add"}
+              {uploading ? "Compressing…" : "+ Add"}
             </span>
             <input
               id={inputId}
@@ -140,7 +133,7 @@ export default function UploadImage({
               disabled={uploading}
               onChange={(e) => {
                 handleFiles(e.target.files);
-                e.target.value = ""; // allow re-selecting the same file
+                e.target.value = "";
               }}
               className="hidden"
               capture="environment"
