@@ -223,6 +223,8 @@ exports.createJob = async (req, res) => {
     });
   }
 };
+
+
 // GET /api/companies/getJobs
 // query: { search, status, callType, natureOfWork, serviceCenter, serviceEngineer,
 //          sortDesc, page, limit }

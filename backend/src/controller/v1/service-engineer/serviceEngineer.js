@@ -335,7 +335,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     const populatedJob = await Job.findById(job._id)
       .populate("customer", "name mobileNumber email address")
-      .populate("company", "companyName")
+      .populate("company", "companyName", contactNumber)
       .populate("assignedServiceEngineer", "name");
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
@@ -368,13 +368,13 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       }).format(new Date(date));
     };
 
-    const support = process.env.MSG91_INTEGRATED_NUMBER;
+    const support = populatedJob.company.contactNumber;
 
     await sendWhatsAppTemplate({
       to: populatedJob.customer.mobileNumber,
       templateName: "complete",
-      documentUrl: pdfUrl, // FIXED — was `reportsDir` (the folder path), now the real file URL
-      namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
+      documentUrl: pdfUrl,
+      namespace: process.env.NAMESPACE,
       variables: [
         populatedJob.customer?.name || "Customer",
         formatIndiaDateTime(populatedJob.complaintDate),
