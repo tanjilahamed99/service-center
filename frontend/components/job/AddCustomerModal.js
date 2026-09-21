@@ -35,7 +35,7 @@ export default function AddCustomerModal({ open, onClose, onSave }) {
   }
 
   return (
-    <Modal open={open} title="Add New Customer">
+    <Modal open={open} title="Add New Customer" onClose={handleClose}>
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-navy-900">

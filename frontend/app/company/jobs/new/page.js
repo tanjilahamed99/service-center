@@ -617,6 +617,7 @@ export default function CreateJobPage() {
         open={isAddCustomerOpen}
         onClose={() => setAddCustomerOpen(false)}
         onSave={handleAddCustomer}
+        
       />
     </form>
   );
