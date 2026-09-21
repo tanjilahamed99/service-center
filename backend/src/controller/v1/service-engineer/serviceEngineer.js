@@ -6,6 +6,8 @@ const SparePartTransaction = require("../../../models/SparePartTransaction");
 const sendEmail = require("../../../utils/sendEmail");
 const generateServiceReportPDF = require("../../../utils/generateServiceReport");
 const { sendWhatsAppTemplate } = require("../../../utils/msg91");
+const fs = require("fs");
+const path = require("path");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -339,6 +341,19 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
     });
 
+    // NEW — save the buffer to a real file
+    const reportsDir = path.join(__dirname, "../uploads/service-reports");
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+    const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
+    fs.writeFileSync(path.join(reportsDir, filename), pdfBuffer);
+
+    // NEW — build the public URL to that file
+    const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
+
+    console.log("PDF URL:", pdfUrl); // temporary — confirms the URL before you send it
+
     // India timezone formatter
     const formatIndiaDateTime = (date) => {
       if (!date) return "-";
@@ -360,6 +375,8 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       to: serviceCenterPhone,
 
       templateName: "complete",
+
+      documentUrl: pdfUrl,
 
       namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
 
