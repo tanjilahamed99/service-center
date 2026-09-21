@@ -236,33 +236,31 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       assignedServiceEngineer: engineer._id,
     });
     if (!existing) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Job not found or not assigned to you",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Job not found or not assigned to you",
+      });
     }
 
     const centerId = engineer.serviceCenter;
 
     // Stock validation — re-enable once you're ready to test spare-parts
     // consumption again; leaving disabled won't break anything else here.
-    // for (const part of consumedParts) {
-    //   if (!part.sparePart) continue;
-    //   const stock = await SparePartStock.findOne({
-    //     company: engineer.company,
-    //     sparePart: part.sparePart,
-    //     ownerType: "ServiceCenter",
-    //     ownerId: centerId,
-    //   });
-    //   if (!stock || stock.quantity < part.quantity) {
-    //     return res.status(409).json({
-    //       success: false,
-    //       message: `Not enough stock at your service center for this part (have ${stock?.quantity ?? 0}, need ${part.quantity}).`,
-    //     });
-    //   }
-    // }
+    for (const part of consumedParts) {
+      if (!part.sparePart) continue;
+      const stock = await SparePartStock.findOne({
+        company: engineer.company,
+        sparePart: part.sparePart,
+        ownerType: "ServiceCenter",
+        ownerId: centerId,
+      });
+      if (!stock || stock.quantity < part.quantity) {
+        return res.status(409).json({
+          success: false,
+          message: `Not enough stock at your service center for this part (have ${stock?.quantity ?? 0}, need ${part.quantity}).`,
+        });
+      }
+    }
 
     const sparesTotal = consumedParts.reduce(
       (sum, part) => sum + (Number(part.quantity) || 0),
@@ -270,36 +268,37 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     );
 
     // FIXED — the real filter/update/options are restored here.
-    const job = await Job
-      .findOneAndUpdate
-      // { _id: req.params.id, assignedServiceEngineer: engineer._id },
-      // {
-      //   $set: {
-      //     status: "Completed",
-      //     solveDate: Date.now(),
-      //     consumedParts,
-      //     sparesTotal,
-      //     serviceCharge,
-      //     discount,
-      //     actualIssueFound,
-      //     correctiveActionTaken,
-      //     closurePhotos,
-      //     customerSignature,
-      //     closureOtpVerified: true,
-      //     ...(closureLocation?.latitude && closureLocation?.longitude
-      //       ? { closureLocation: { ...closureLocation, capturedAt: Date.now() } }
-      //       : {}),
-      //   },
-      //   $push: {
-      //     logs: {
-      //       at: Date.now(),
-      //       actor: `Service Engineer:${engineer._id}`,
-      //       action: "Job closed",
-      //     },
-      //   },
-      // },
-      // { new: true, runValidators: true },
-      ();
+    const job = await Job.findOneAndUpdate(
+      { _id: req.params.id, assignedServiceEngineer: engineer._id },
+      {
+        $set: {
+          status: "Completed",
+          solveDate: Date.now(),
+          consumedParts,
+          sparesTotal,
+          serviceCharge,
+          discount,
+          actualIssueFound,
+          correctiveActionTaken,
+          closurePhotos,
+          customerSignature,
+          closureOtpVerified: true,
+          ...(closureLocation?.latitude && closureLocation?.longitude
+            ? {
+                closureLocation: { ...closureLocation, capturedAt: Date.now() },
+              }
+            : {}),
+        },
+        $push: {
+          logs: {
+            at: Date.now(),
+            actor: `Service Engineer:${engineer._id}`,
+            action: "Job closed",
+          },
+        },
+      },
+      { new: true, runValidators: true },
+    );
 
     if (!job) {
       return res
@@ -308,26 +307,31 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     }
 
     // Spare parts stock decrement — same note as above, re-enable together.
-    // for (const part of consumedParts) {
-    //   if (!part.sparePart) continue;
-    //   await SparePartStock.updateOne(
-    //     { company: engineer.company, sparePart: part.sparePart, ownerType: "ServiceCenter", ownerId: centerId },
-    //     { $inc: { quantity: -part.quantity } },
-    //   );
-    //   await SparePartTransaction.create({
-    //     company: engineer.company,
-    //     sparePart: part.sparePart,
-    //     type: "Consume",
-    //     fromType: "ServiceCenter",
-    //     fromId: centerId,
-    //     toType: null,
-    //     toId: null,
-    //     quantity: part.quantity,
-    //     job: job._id,
-    //     note: part.remarks,
-    //     actor: `Service Engineer:${engineer._id}`,
-    //   });
-    // }
+    for (const part of consumedParts) {
+      if (!part.sparePart) continue;
+      await SparePartStock.updateOne(
+        {
+          company: engineer.company,
+          sparePart: part.sparePart,
+          ownerType: "ServiceCenter",
+          ownerId: centerId,
+        },
+        { $inc: { quantity: -part.quantity } },
+      );
+      await SparePartTransaction.create({
+        company: engineer.company,
+        sparePart: part.sparePart,
+        type: "Consume",
+        fromType: "ServiceCenter",
+        fromId: centerId,
+        toType: null,
+        toId: null,
+        quantity: part.quantity,
+        job: job._id,
+        note: part.remarks,
+        actor: `Service Engineer:${engineer._id}`,
+      });
+    }
 
     const populatedJob = await Job.findById(job._id)
       .populate("customer", "name mobileNumber email address")
@@ -341,10 +345,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       state: "Uttar Pradesh",
       salesPhone: "9760730500",
       supportPhone: "9012665500, 9012665543",
-      trackUrl: `https://yourapp.com/track/${populatedJob.complaintNumber}`,
-      payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
     });
-
     const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
@@ -355,7 +356,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
     fs.writeFileSync(path.join(reportsDir, filename), pdfBuffer);
     const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
-    console.log("PDF saved. Public URL:", pdfUrl);
 
     const formatIndiaDateTime = (date) => {
       if (!date) return "-";
@@ -370,10 +370,10 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       }).format(new Date(date));
     };
 
-    const serviceCenterPhone = "918707733977";
+    const support = process.env.MSG91_INTEGRATED_NUMBER;
 
     await sendWhatsAppTemplate({
-      to: serviceCenterPhone,
+      to: populatedJob.customer.mobileNumber || "",
       templateName: "complete",
       documentUrl: pdfUrl, // FIXED — was `reportsDir` (the folder path), now the real file URL
       namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
@@ -387,7 +387,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
         populatedJob.assignedServiceEngineer?.name || "Service Engineer",
         formatIndiaDateTime(populatedJob.solveDate),
         populatedJob.approxCost ?? "-",
-        "9760730500",
+        support,
       ],
     });
 
@@ -396,13 +396,11 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       .json({ success: true, message: "Job closed", data: job });
   } catch (error) {
     console.error("serviceEngineerCloseJob error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to close job",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to close job",
+      error: error.message,
+    });
   }
 };
 
