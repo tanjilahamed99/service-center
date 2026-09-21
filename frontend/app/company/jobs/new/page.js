@@ -205,6 +205,14 @@ export default function CreateJobPage() {
       setSubmitError("Select or add a customer first.");
       return;
     }
+    if (!form.assignTo) {
+      setSubmitError("Select assigned ServiceCenter");
+      return;
+    }
+    if (!form.scheduleDate) {
+      setSubmitError("Select scheduleDate");
+      return;
+    }
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -617,7 +625,6 @@ export default function CreateJobPage() {
         open={isAddCustomerOpen}
         onClose={() => setAddCustomerOpen(false)}
         onSave={handleAddCustomer}
-        
       />
     </form>
   );

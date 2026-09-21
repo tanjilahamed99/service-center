@@ -77,6 +77,19 @@ exports.createJob = async (req, res) => {
       });
     }
 
+    const existingPendingJob = await Job.findOne({
+      customer,
+      company,
+      status: { $nin: ["Completed", "Cancelled"] },
+    }).select("complaintNumber status");
+
+    if (existingPendingJob) {
+      return res.status(409).json({
+        success: false,
+        message: `This customer already has a pending complaint (${existingPendingJob.complaintNumber}, status: ${existingPendingJob.status}). Resolve or cancel it before creating a new one.`,
+      });
+    }
+
     const jobCount = await Job.countDocuments();
 
     const companyData = await Company.findById(company);
@@ -223,7 +236,6 @@ exports.createJob = async (req, res) => {
     });
   }
 };
-
 
 // GET /api/companies/getJobs
 // query: { search, status, callType, natureOfWork, serviceCenter, serviceEngineer,
