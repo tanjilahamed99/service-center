@@ -62,7 +62,6 @@ const sendWhatsAppTemplate = async ({
       },
     };
 
-    console.log("MSG91 Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/",

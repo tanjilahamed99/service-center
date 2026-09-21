@@ -335,7 +335,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     const populatedJob = await Job.findById(job._id)
       .populate("customer", "name mobileNumber email address")
-      .populate("company", "companyName", contactNumber)
+      .populate("company", "companyName contactNumber")
       .populate("assignedServiceEngineer", "name");
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
@@ -372,6 +372,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     await sendWhatsAppTemplate({
       to: populatedJob.customer.mobileNumber,
+      // to: "+91 870 773 3977",
       templateName: "complete",
       documentUrl: pdfUrl,
       namespace: process.env.NAMESPACE,
