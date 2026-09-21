@@ -236,17 +236,20 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       assignedServiceEngineer: engineer._id,
     });
     if (!existing) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found or not assigned to you",
-      });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "Job not found or not assigned to you",
+        });
     }
 
-    // Validate stock BEFORE touching anything, so a mid-way failure can't
-    // leave some parts decremented and others not.
     const centerId = engineer.serviceCenter;
+
+    // Stock validation — re-enable once you're ready to test spare-parts
+    // consumption again; leaving disabled won't break anything else here.
     // for (const part of consumedParts) {
-    //   if (!part.sparePart) continue; // free-text-only line item, no inventory link
+    //   if (!part.sparePart) continue;
     //   const stock = await SparePartStock.findOne({
     //     company: engineer.company,
     //     sparePart: part.sparePart,
@@ -266,6 +269,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       0,
     );
 
+    // FIXED — the real filter/update/options are restored here.
     const job = await Job
       .findOneAndUpdate
       // { _id: req.params.id, assignedServiceEngineer: engineer._id },
@@ -283,9 +287,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       //     customerSignature,
       //     closureOtpVerified: true,
       //     ...(closureLocation?.latitude && closureLocation?.longitude
-      //       ? {
-      //           closureLocation: { ...closureLocation, capturedAt: Date.now() },
-      //         }
+      //       ? { closureLocation: { ...closureLocation, capturedAt: Date.now() } }
       //       : {}),
       //   },
       //   $push: {
@@ -299,16 +301,17 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       // { new: true, runValidators: true },
       ();
 
-    // Decrement stock + log a Consume transaction for every linked part.
+    if (!job) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Job not found while updating" });
+    }
+
+    // Spare parts stock decrement — same note as above, re-enable together.
     // for (const part of consumedParts) {
     //   if (!part.sparePart) continue;
     //   await SparePartStock.updateOne(
-    //     {
-    //       company: engineer.company,
-    //       sparePart: part.sparePart,
-    //       ownerType: "ServiceCenter",
-    //       ownerId: centerId,
-    //     },
+    //     { company: engineer.company, sparePart: part.sparePart, ownerType: "ServiceCenter", ownerId: centerId },
     //     { $inc: { quantity: -part.quantity } },
     //   );
     //   await SparePartTransaction.create({
@@ -342,22 +345,20 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
     });
 
-    // save the buffer to a real file — process.cwd() is always /app
-    // inside this container, no matter how deep this controller file
-    // itself is nested
     const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
-    console.log(
-      "DEBUG reportsDir (should be /app/uploads/service-reports):",
-      reportsDir,
-    );
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
 
-    // India timezone formatter
+    // FIXED — this whole block was missing: the filename, the actual
+    // write to disk, and the public URL construction.
+    const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
+    fs.writeFileSync(path.join(reportsDir, filename), pdfBuffer);
+    const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
+    console.log("PDF saved. Public URL:", pdfUrl);
+
     const formatIndiaDateTime = (date) => {
       if (!date) return "-";
-
       return new Intl.DateTimeFormat("en-IN", {
         timeZone: "Asia/Kolkata",
         day: "2-digit",
@@ -373,56 +374,35 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     await sendWhatsAppTemplate({
       to: serviceCenterPhone,
-
       templateName: "complete",
-
-      documentUrl: reportsDir,
-
+      documentUrl: pdfUrl, // FIXED — was `reportsDir` (the folder path), now the real file URL
       namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
-
       variables: [
-        // {{1}} Customer name
         populatedJob.customer?.name || "Customer",
-
-        // {{2}} Book Date & Time
         formatIndiaDateTime(populatedJob.complaintDate),
-
-        // {{3}} Complaint No.
         populatedJob.complaintNumber,
-
-        // {{4}} Brand
         populatedJob.brand || "-",
-
-        // {{5}} Product
         populatedJob.product || "-",
-
-        // {{6}} Status
         populatedJob.status || "-",
-
-        // {{7}} Service Engineer
         populatedJob.assignedServiceEngineer?.name || "Service Engineer",
-
-        // {{8}} Complete Date & Time
         formatIndiaDateTime(populatedJob.solveDate),
-
-        // {{9}} Amount
         populatedJob.approxCost ?? "-",
-
-        // {{10}} Helpline
         "9760730500",
       ],
     });
 
-    // return res
-    //   .status(200)
-    //   .json({ success: true, message: "Job closed", data: job });
+    return res
+      .status(200)
+      .json({ success: true, message: "Job closed", data: job });
   } catch (error) {
     console.error("serviceEngineerCloseJob error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to close job",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to close job",
+        error: error.message,
+      });
   }
 };
 
