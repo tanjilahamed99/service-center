@@ -1,6 +1,5 @@
 // utils/pdf/generateServiceReport.js
 const PDFDocument = require("pdfkit");
-const QRCode = require("qrcode");
 const https = require("https");
 const http = require("http");
 
@@ -27,15 +26,18 @@ async function generateServiceReportPDF(job, options = {}) {
     state = "",
     salesPhone = "",
     supportPhone = "",
-    logoUrl = "https://i.ibb.co.com/TMzvqPfG/mainlogo.png", // NEW — pass a real logo image URL; falls back to a plain circle badge if empty
+    logoUrl = "https://i.ibb.co.com/TMzvqPfG/mainlogo.png",
   } = options;
 
-  const [photoBuffer, sigBuffer, trackQR, payQR, logoBuffer] =
-    await Promise.all([
-      fetchImageBuffer(job.closurePhotos?.[0]),
-      fetchImageBuffer(job.customerSignature),
-      logoUrl ? fetchImageBuffer(logoUrl) : null,
-    ]);
+  // FIX: was destructuring 5 variables out of a 3-element array, so
+  // `logoBuffer` was always undefined and the fetched logo silently landed
+  // in `trackQR` instead (which was never actually rendered as a QR code —
+  // there was no QRCode generation call anywhere in this file).
+  const [photoBuffer, sigBuffer, logoBuffer] = await Promise.all([
+    fetchImageBuffer(job.closurePhotos?.[0]),
+    fetchImageBuffer(job.customerSignature),
+    logoUrl ? fetchImageBuffer(logoUrl) : null,
+  ]);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
@@ -51,7 +53,6 @@ async function generateServiceReportPDF(job, options = {}) {
       value: "#0f172a",
       heading: "#1e293b",
       line: "#cbd5e1",
-      balance: "#dc2626",
       brand: "#2563eb",
     };
 
@@ -106,7 +107,7 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.8);
 
-    // ---------- Customer Details (left, plain lines — not a label/value table) ----------
+    // ---------- Customer Details (left, plain lines) ----------
     // ---------- Complaint Details (right, labeled rows) ----------
     const sectionStartY = doc.y;
     const colW = W / 2 - 10;
@@ -130,7 +131,7 @@ async function generateServiceReportPDF(job, options = {}) {
         job.customer?.name?.toUpperCase() || "CUSTOMER NAME NOT AVAILABLE",
         M,
         leftY,
-        { width: colW, bold: true },
+        { width: colW, bold: true }
       );
     leftY = doc.y + 2;
     doc
@@ -139,25 +140,18 @@ async function generateServiceReportPDF(job, options = {}) {
       .text(job.customer?.address || "-", M, leftY, { width: colW });
     leftY = doc.y + 4;
 
-    const customerRows = [
-      ["Mobile No", job.customer?.mobileNumber],
-      ["Email", job.customer?.email || "-"],
-    ];
+    // Email row removed — customers don't have an email on file.
+    const customerRows = [["Mobile No", job.customer?.mobileNumber]];
     customerRows.forEach(([label, value]) => {
       doc
         .fontSize(8)
         .fillColor(colors.label)
         .text(label, M, leftY, { width: 70, continued: true });
-      doc
-        .fillColor(colors.value)
-        .text(`: ${value ?? "-"}`, { width: colW - 70 });
+      doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 70 });
       leftY = doc.y + 3;
     });
 
-    let rightY = doc.y; // will be reset below to align with sectionStartY's row start
-    rightY = sectionStartY + (leftY - sectionStartY) - (leftY - doc.y); // keep simple: start at same height as leftY start
-    rightY = doc.y; // fallback, recalculated cleanly next line
-    rightY = sectionStartY + 16; // aligns with where leftY's first row began
+    const rightY = sectionStartY + 16; // aligns with where leftY's first row began
 
     const complaintRows = [
       ["Job No", job.complaintNumber],
@@ -169,18 +163,17 @@ async function generateServiceReportPDF(job, options = {}) {
         job.solveDate ? new Date(job.solveDate).toLocaleString() : "-",
       ],
     ];
+    let rightYCursor = rightY;
     complaintRows.forEach(([label, value]) => {
       doc
         .fontSize(8)
         .fillColor(colors.label)
-        .text(label, M + W / 2 + 10, rightY, { width: 90, continued: true });
-      doc
-        .fillColor(colors.value)
-        .text(`: ${value ?? "-"}`, { width: colW - 90 });
-      rightY = doc.y + 3;
+        .text(label, M + W / 2 + 10, rightYCursor, { width: 90, continued: true });
+      doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 90 });
+      rightYCursor = doc.y + 3;
     });
 
-    doc.y = Math.max(leftY, rightY) + 6;
+    doc.y = Math.max(leftY, rightYCursor) + 6;
     doc
       .strokeColor(colors.line)
       .moveTo(M, doc.y)
@@ -227,18 +220,14 @@ async function generateServiceReportPDF(job, options = {}) {
     doc.moveDown(0.8);
 
     // ---------- Call Closure Details table ----------
-    doc
-      .fontSize(9)
-      .fillColor(colors.heading)
-      .text("Call Closure Details", M, doc.y);
+    // Rate/Total columns removed — quantity only, per request.
+    doc.fontSize(9).fillColor(colors.heading).text("Call Closure Details", M, doc.y);
     doc.moveDown(0.3);
 
     const cols = [
-      { label: "Sr No.", w: 40 },
-      { label: "Spare Part Description", w: W - 40 - 60 - 60 - 60 },
-      { label: "Quantity", w: 60 },
-      { label: "Rate", w: 60 },
-      { label: "Total", w: 60 },
+      { label: "Sr No.", w: 50 },
+      { label: "Spare Part Description", w: W - 50 - 120 },
+      { label: "Quantity", w: 120 },
     ];
     const rowH = 20;
     let tx = M;
@@ -255,24 +244,13 @@ async function generateServiceReportPDF(job, options = {}) {
     const parts = job.consumedParts?.length ? job.consumedParts : [];
     if (parts.length === 0) {
       doc.rect(M, ty, W, rowH).stroke(colors.line);
-      doc
-        .fillColor(colors.label)
-        .fontSize(8)
-        .text("No spare parts used", M + 4, ty + 6);
+      doc.fillColor(colors.label).fontSize(8).text("No spare parts used", M + 4, ty + 6);
       ty += rowH;
     } else {
       parts.forEach((p, i) => {
         doc.rect(M, ty, W, rowH).stroke(colors.line);
         tx = M;
-        const rate = p.rate || 0;
-        const total = rate * (p.quantity || 0);
-        const rowVals = [
-          i + 1,
-          p.spareName || "-",
-          `${p.quantity} PCS`,
-          rate,
-          total,
-        ];
+        const rowVals = [i + 1, p.spareName || "-", `${p.quantity ?? 0} PCS`];
         cols.forEach((c, ci) => {
           doc
             .fillColor(colors.value)
@@ -285,7 +263,7 @@ async function generateServiceReportPDF(job, options = {}) {
     }
     doc.y = ty + 15;
 
-    // ---------- Payment Details (left) + Picture of Work (right) ----------
+    // ---------- Approximate Cost (left) + Picture of Work (right) ----------
     const sectionTop = doc.y;
     doc
       .fontSize(9)
@@ -296,16 +274,13 @@ async function generateServiceReportPDF(job, options = {}) {
       .fillColor(colors.heading)
       .text("Picture of Work", M + W / 2 + 10, sectionTop, { underline: true });
 
-    // Simplified to a single approximate-cost line, per request — no more
-    // service charge / discount / received / balance breakdown.
+    // Cost text is now black (colors.value) instead of red (was colors.balance).
     let py = doc.y + 4;
     doc
       .fontSize(10)
-      .fillColor(colors.balance)
+      .fillColor(colors.value)
       .text("Approximate Cost", M, py, { width: 120, continued: true });
-    doc
-      .fillColor(colors.balance)
-      .text(`: Rs. ${job.approxCost ?? "-"}`, { width: 120 });
+    doc.fillColor(colors.value).text(`: Rs. ${job.approxCost ?? "-"}`, { width: 120 });
     py = doc.y + 3;
 
     const photoX = M + W / 2 + 10;
@@ -313,16 +288,10 @@ async function generateServiceReportPDF(job, options = {}) {
     const photoBoxSize = 90;
     if (photoBuffer) {
       try {
-        doc
-          .rect(photoX, photoY, photoBoxSize, photoBoxSize)
-          .stroke(colors.line); // frame, so a photo without a border doesn't look unfinished
-        doc.image(photoBuffer, photoX, photoY, {
-          fit: [photoBoxSize, photoBoxSize],
-        });
+        doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
+        doc.image(photoBuffer, photoX, photoY, { fit: [photoBoxSize, photoBoxSize] });
       } catch {
-        doc
-          .rect(photoX, photoY, photoBoxSize, photoBoxSize)
-          .stroke(colors.line);
+        doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
         doc
           .fontSize(7)
           .fillColor(colors.label)
@@ -349,13 +318,8 @@ async function generateServiceReportPDF(job, options = {}) {
     doc.y = Math.max(py, photoY + photoBoxSize) + 15;
 
     // ---------- Work Done ----------
-    doc
-      .fontSize(8)
-      .fillColor(colors.label)
-      .text("Work Done", M, doc.y, { continued: true });
-    doc
-      .fillColor(colors.value)
-      .text(` : ${job.correctiveActionTaken || "work done"}`);
+    doc.fontSize(8).fillColor(colors.label).text("Work Done", M, doc.y, { continued: true });
+    doc.fillColor(colors.value).text(` : ${job.correctiveActionTaken || "work done"}`);
     doc.moveDown(0.8);
     doc
       .strokeColor(colors.line)
@@ -364,7 +328,10 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.6);
 
-    // ---------- Terms & QR / Signature ----------
+    // ---------- Terms & Signature ----------
+    // Track/Pay QR codes removed — they were never actually generated (no
+    // QRCode call existed), and the buffer that used to land in `trackQR`
+    // by accident was really the logo, which now renders correctly above.
     const termsTop = doc.y;
     const terms = [
       "Payment Terms: The client shall pay the service provider within [insert timeframe, e.g., 30 days] from the date of invoice.",
@@ -373,61 +340,24 @@ async function generateServiceReportPDF(job, options = {}) {
       "Spares comes with 30 Days Warranty.",
       "Material Once sold will not be taken back.",
     ];
-    doc
-      .fontSize(7)
-      .fillColor(colors.label)
-      .text("TERMS & CONDITIONS", M, termsTop);
+    doc.fontSize(7).fillColor(colors.label).text("TERMS & CONDITIONS", M, termsTop);
     doc.fontSize(6.5);
     terms.forEach((t, i) => {
-      doc
-        .fillColor(colors.label)
-        .text(`${i + 1}. ${t}`, M, doc.y + 3, { width: W - 200 });
+      doc.fillColor(colors.label).text(`${i + 1}. ${t}`, M, doc.y + 3, { width: W - 100 });
     });
 
-    const qrY = termsTop;
-    const qrSize = 55;
-    if (trackQR) {
-      doc.image(trackQR, M + W - 190, qrY, { width: qrSize });
-      doc
-        .fontSize(6)
-        .fillColor(colors.label)
-        .text("SCAN ME", M + W - 190, qrY + qrSize + 2, {
-          width: qrSize,
-          align: "center",
-        });
-      doc.text("to track your Job", M + W - 190, doc.y, {
-        width: qrSize,
-        align: "center",
-      });
-    }
-    if (payQR) {
-      doc.image(payQR, M + W - 120, qrY, { width: qrSize });
-      doc
-        .fontSize(6)
-        .fillColor(colors.label)
-        .text("SCAN ME", M + W - 120, qrY + qrSize + 2, {
-          width: qrSize,
-          align: "center",
-        });
-      doc.text("To Pay Online", M + W - 120, doc.y, {
-        width: qrSize,
-        align: "center",
-      });
-    }
+    const sigY = termsTop;
     if (sigBuffer) {
       try {
-        doc.image(sigBuffer, M + W - 60, qrY + 5, { fit: [55, 30] });
+        doc.image(sigBuffer, M + W - 90, sigY + 5, { fit: [80, 35] });
       } catch {}
     }
     doc
       .fontSize(6)
       .fillColor(colors.label)
-      .text("Customer Signature", M + W - 65, qrY + 45, {
-        width: 65,
-        align: "center",
-      });
+      .text("Customer Signature", M + W - 90, sigY + 45, { width: 80, align: "center" });
 
-    doc.y = Math.max(doc.y, qrY + qrSize + 20) + 10;
+    doc.y = Math.max(doc.y, sigY + 60) + 10;
 
     // ---------- Footer ----------
     doc
@@ -439,12 +369,10 @@ async function generateServiceReportPDF(job, options = {}) {
     doc
       .fontSize(8)
       .fillColor(colors.heading)
-      .text(
-        `SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`,
-        M,
-        doc.y,
-        { width: W, align: "center" },
-      );
+      .text(`SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`, M, doc.y, {
+        width: W,
+        align: "center",
+      });
     doc
       .fontSize(6)
       .fillColor(colors.label)
@@ -452,7 +380,7 @@ async function generateServiceReportPDF(job, options = {}) {
         "This is computer generated Service Report and does not require any signature.",
         M,
         doc.y + 3,
-        { width: W, align: "center" },
+        { width: W, align: "center" }
       );
     doc
       .fontSize(6)

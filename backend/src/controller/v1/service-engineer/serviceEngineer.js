@@ -346,6 +346,8 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       salesPhone: "9760730500",
       supportPhone: "9012665500, 9012665543",
     });
+
+    
     const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
