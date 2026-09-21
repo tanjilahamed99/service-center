@@ -266,7 +266,8 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       0,
     );
 
-    const job = await Job.findOneAndUpdate(
+    const job = await Job
+      .findOneAndUpdate
       // { _id: req.params.id, assignedServiceEngineer: engineer._id },
       // {
       //   $set: {
@@ -296,7 +297,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       //   },
       // },
       // { new: true, runValidators: true },
-    );
+      ();
 
     // Decrement stock + log a Consume transaction for every linked part.
     // for (const part of consumedParts) {
@@ -341,18 +342,17 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       payUrl: `https://yourapp.com/pay/${populatedJob._id}`,
     });
 
-    // NEW — save the buffer to a real file
-    const reportsDir = path.join(__dirname, "../uploads/service-reports");
+    // save the buffer to a real file — process.cwd() is always /app
+    // inside this container, no matter how deep this controller file
+    // itself is nested
+    const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
+    console.log(
+      "DEBUG reportsDir (should be /app/uploads/service-reports):",
+      reportsDir,
+    );
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
-    const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
-    fs.writeFileSync(path.join(reportsDir, filename), pdfBuffer);
-
-    // NEW — build the public URL to that file
-    const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
-
-    console.log("PDF URL:", pdfUrl); // temporary — confirms the URL before you send it
 
     // India timezone formatter
     const formatIndiaDateTime = (date) => {
