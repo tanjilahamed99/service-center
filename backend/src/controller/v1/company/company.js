@@ -13,6 +13,8 @@ const jwt = require("jsonwebtoken");
 const sendBrevoCampaign = require("../../../utils/brevoEmail");
 const generateServiceReportPDF = require("../../../utils/generateServiceReport");
 const sendEmail = require("../../../utils/sendEmail");
+const { sendWhatsAppTemplate } = require("../../../utils/msg91");
+const axios = require("axios");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -25,9 +27,11 @@ const sendEmail = require("../../../utils/sendEmail");
 // body: { customer, jobSource, complaintDate, callType, natureOfWork, approxCost,
 //         brand, product, modelNumber, serialNumber, warrantyFrom, warrantyTo,
 //         assignedServiceCenter, scheduleDate, uploadFile }
+
 exports.createJob = async (req, res) => {
   try {
     const company = req.user._id;
+
     const {
       customer,
       jobSource,
@@ -53,17 +57,20 @@ exports.createJob = async (req, res) => {
       });
     }
 
-    const customerExists = await Customer.findOne({ _id: customer, company });
+    const customerExists = await Customer.findOne({
+      _id: customer,
+      company,
+    });
+
     if (!customerExists) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
     }
 
-    // Simple sequential complaint number, scoped per company.
-    // NOTE: under concurrent writes this can theoretically collide — swap for an
-    // atomic counter collection (findOneAndUpdate with $inc) if that matters to you.
     const jobCount = await Job.countDocuments();
+
     const complaintNumber = `CMP-${String(jobCount + 1).padStart(6, "0")}`;
 
     const job = await Job.create({
@@ -80,12 +87,19 @@ exports.createJob = async (req, res) => {
       serialNumber,
       warrantyFrom,
       warrantyTo,
+
       assignedServiceCenter: assignedServiceCenter || undefined,
+
       scheduleDate,
+
       assignedAt: assignedServiceCenter ? Date.now() : undefined,
+
       status: assignedServiceCenter ? "Service Center Assigned" : "Registered",
+
       uploadFile,
+
       remark: remark || "",
+
       logs: [
         {
           at: Date.now(),
@@ -95,80 +109,113 @@ exports.createJob = async (req, res) => {
       ],
     });
 
-    // send otp to customer
-    //     const populatedJob = await Job.findById(job._id)
-    //       .populate("customer", "name mobileNumber email address")
-    //       .populate("company", "companyName")
-    //       .populate("assignedServiceEngineer", "name");
+    // -----------------------------------------
+    // MSG91 WHATSAPP
+    // -----------------------------------------
 
-    //     const pdfBuffer = await generateServiceReportPDF(populatedJob);
-    //     const customerEmail =
-    //       populatedJob.customer?.email || "tanjil113355@gmail.com";
+    if (assignedServiceCenter) {
+      const populatedJob = await Job.findById(job._id).populate(
+        "assignedServiceCenter",
+        "name mobileNumber phone",
+      );
 
-    //     const html = `
-    // <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-    //   <div style="background: #2563eb; padding: 20px; border-radius: 8px 8px 0 0;">
-    //     <h2 style="color: #ffffff; margin: 0; font-size: 18px;">Service Report</h2>
-    //   </div>
+      const serviceCenter = populatedJob?.assignedServiceCenter;
 
-    //   <div style="border: 1px solid #e2e8f0; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
-    //     <p style="margin: 0 0 12px;">Dear <strong>${populatedJob.customer?.name || "Customer"}</strong>,</p>
-    //     <p style="margin: 0 0 16px;">Your complaint has been solved. Please find the details below:</p>
+      const serviceCenterPhone = "+91 870 773 3977";
 
-    //     <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-    //       <tr>
-    //         <td style="padding: 6px 0; color: #64748b; width: 40%;">Complaint No.</td>
-    //         <td style="padding: 6px 0; font-weight: bold;">${populatedJob.complaintNumber}</td>
-    //       </tr>
-    //       <tr style="background: #f8fafc;">
-    //         <td style="padding: 6px 0; color: #64748b;">Product</td>
-    //         <td style="padding: 6px 0;">${populatedJob.product || "-"}</td>
-    //       </tr>
-    //       <tr>
-    //         <td style="padding: 6px 0; color: #64748b;">Status</td>
-    //         <td style="padding: 6px 0; color: #16a34a; font-weight: bold;">${populatedJob.status}</td>
-    //       </tr>
-    //       <tr style="background: #f8fafc;">
-    //         <td style="padding: 6px 0; color: #64748b;">Technician</td>
-    //         <td style="padding: 6px 0;">${populatedJob.assignedServiceEngineer?.name || "-"}</td>
-    //       </tr>
-    //       <tr>
-    //         <td style="padding: 6px 0; color: #64748b;">Closed Date</td>
-    //         <td style="padding: 6px 0;">${new Date(populatedJob.solveDate).toLocaleString()}</td>
-    //       </tr>
-    //     </table>
+      const code = 12343;
 
-    //     <p style="margin: 20px 0 0; font-size: 13px; color: #64748b;">
-    //       A detailed PDF report is attached to this email.
-    //     </p>
+      if (serviceCenterPhone) {
+        await sendWhatsAppTemplate({
+          to: serviceCenterPhone,
 
-    //     <p style="margin: 20px 0 0;">
-    //       Thank you,<br/>
-    //       <strong>${populatedJob.company?.companyName || "Service Team"}</strong>
-    //     </p>
-    //   </div>
-    // </div>
-    // `;
+          templateName: "service_center",
 
-    //     await sendEmail(
-    //       customerEmail,
-    //       `Your Complaint ${populatedJob.complaintNumber} has been Solved`,
-    //       {
-    //         html,
-    //         attachments: [
-    //           {
-    //             filename: `Complaint-${populatedJob.complaintNumber}.pdf`,
-    //             content: pdfBuffer,
-    //           },
-    //         ],
-    //       },
-    //     );
+          namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
 
-    return res
-      .status(201)
-      .json({ success: true, message: "Job created", data: job });
+          variables: [
+            // {{1}}
+            serviceCenter.name || "Service Center",
+
+            // {{2}}
+            job.complaintDate,
+
+            // {{3}}
+            complaintNumber,
+
+            // {{4}}
+            brand || "-",
+
+            // {{5}}
+            product || "-",
+
+            // {{6}}
+            natureOfWork || "-",
+
+            // {{7}}
+            job.scheduleDate,
+
+            // {{8}}
+            approxCost ?? "-",
+
+            // {{9}}
+            "+91 870 773 3977",
+          ],
+        });
+      }
+
+      if (customerExists) {
+        const customerNumber = "+91 870 773 3977";
+        await sendWhatsAppTemplate({
+          to: customerNumber,
+
+          templateName: "register",
+
+          namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
+
+          variables: [
+            // {{1}}
+            customerExists.name || "Customer",
+
+            // {{2}}
+            serviceCenter.name,
+
+            // {{3}}
+            code,
+
+            // {{4}}
+            job.complaintDate || "-",
+
+            // {{5}}
+            job.complaintNumber || "-",
+
+            // {{6}}
+            brand || "-",
+
+            // {{7}}
+            product,
+            
+            // {{8}}
+            job.scheduleDate,
+
+            // {{9}}
+            approxCost ?? "-",
+
+            // {{10}}
+            customerNumber,
+          ],
+        });
+      }
+    }
+
+    // return res.status(201).json({
+    //   success: true,
+    //   message: "Job created",
+    //   data: job,
+    // });
   } catch (error) {
     console.error("createJob error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create job",
@@ -176,7 +223,6 @@ exports.createJob = async (req, res) => {
     });
   }
 };
-
 // GET /api/companies/getJobs
 // query: { search, status, callType, natureOfWork, serviceCenter, serviceEngineer,
 //          sortDesc, page, limit }
@@ -2068,12 +2114,10 @@ exports.getSparePartStockByCenter = async (req, res) => {
     return res.status(200).json({ success: true, data: stock });
   } catch (error) {
     console.error("getSparePartStockByCenter error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch stock by center",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch stock by center",
+      error: error.message,
+    });
   }
 };
