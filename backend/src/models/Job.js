@@ -116,6 +116,11 @@ const JobSchema = new mongoose.Schema(
       accuracy: { type: Number }, // meters — how confident the device is in this reading
       capturedAt: { type: Date },
     },
+
+    // code
+    otp: {
+      type: Number,
+    },
   },
   { timestamps: true },
 );

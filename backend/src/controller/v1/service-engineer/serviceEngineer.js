@@ -339,15 +339,11 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       .populate("assignedServiceEngineer", "name");
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
-      companyAddress:
-        "426, NH 58, Gayatri Garden Partapur Bypass, Meerut, U.P.",
-      gstin: "09ABDC55295N1ZP",
-      state: "Uttar Pradesh",
-      salesPhone: "9760730500",
-      supportPhone: "9012665500, 9012665543",
+      companyAddress: populatedJob.company.address,
+      gstin: populatedJob.company.gstNumber,
+      supportPhone: populatedJob.company.contactNumber,
     });
 
-    
     const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
@@ -375,8 +371,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     const support = process.env.MSG91_INTEGRATED_NUMBER;
 
     await sendWhatsAppTemplate({
-      // to: populatedJob.customer.mobileNumber || "+91 870 773 397",
-      to: "91 870 773 3977",
+      to: populatedJob.customer.mobileNumber,
       templateName: "complete",
       documentUrl: pdfUrl, // FIXED — was `reportsDir` (the folder path), now the real file URL
       namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",

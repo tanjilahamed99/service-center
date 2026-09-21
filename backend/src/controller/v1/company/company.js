@@ -15,6 +15,7 @@ const generateServiceReportPDF = require("../../../utils/generateServiceReport")
 const sendEmail = require("../../../utils/sendEmail");
 const { sendWhatsAppTemplate } = require("../../../utils/msg91");
 const axios = require("axios");
+const { formatIndiaDateTime } = require("../../../helpers/formatIndiaDateTime");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -50,10 +51,17 @@ exports.createJob = async (req, res) => {
       remark,
     } = req.body;
 
-    if (!customer || !jobSource || !callType || !natureOfWork) {
+    if (
+      !customer ||
+      !jobSource ||
+      !callType ||
+      !natureOfWork ||
+      !assignedServiceCenter
+    ) {
       return res.status(400).json({
         success: false,
-        message: "customer, jobSource, callType and natureOfWork are required",
+        message:
+          "customer, jobSource, callType,  and assignedServiceCenter are required",
       });
     }
 
@@ -71,7 +79,11 @@ exports.createJob = async (req, res) => {
 
     const jobCount = await Job.countDocuments();
 
+    const companyData = await Company.findById(company);
+
     const complaintNumber = `CMP-${String(jobCount + 1).padStart(6, "0")}`;
+
+    const otp = Math.floor(10000 + Math.random() * 90000);
 
     const job = await Job.create({
       company,
@@ -99,6 +111,7 @@ exports.createJob = async (req, res) => {
       uploadFile,
 
       remark: remark || "",
+      otp,
 
       logs: [
         {
@@ -109,110 +122,97 @@ exports.createJob = async (req, res) => {
       ],
     });
 
-    // -----------------------------------------
-    // MSG91 WHATSAPP
-    // -----------------------------------------
+    const populatedJob = await Job.findById(job._id).populate(
+      "assignedServiceCenter",
+      "name contactNumber address",
+    );
 
-    if (assignedServiceCenter) {
-      const populatedJob = await Job.findById(job._id).populate(
-        "assignedServiceCenter",
-        "name mobileNumber phone",
-      );
+    const serviceCenter = populatedJob?.assignedServiceCenter;
 
-      const serviceCenter = populatedJob?.assignedServiceCenter;
+    // service-center message
+    await sendWhatsAppTemplate({
+      to: serviceCenter.contactNumber,
 
-      const serviceCenterPhone = "+91 870 773 3977";
+      templateName: "service_center",
 
-      const code = 12343;
+      namespace: process.env.NAMESPACE,
 
-      if (serviceCenterPhone) {
-        await sendWhatsAppTemplate({
-          to: serviceCenterPhone,
+      variables: [
+        // {{1}}
+        serviceCenter.name || "Service Center",
 
-          templateName: "service_center",
+        // {{2}}
+        formatIndiaDateTime(job.complaintDate),
 
-          namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
+        // {{3}}
+        complaintNumber,
 
-          variables: [
-            // {{1}}
-            serviceCenter.name || "Service Center",
+        // {{4}}
+        brand || "-",
 
-            // {{2}}
-            job.complaintDate,
+        // {{5}}
+        product || "-",
 
-            // {{3}}
-            complaintNumber,
+        // {{6}}
+        natureOfWork || "-",
 
-            // {{4}}
-            brand || "-",
+        // {{7}}
+        formatIndiaDateTime(job.scheduleDate),
 
-            // {{5}}
-            product || "-",
+        // {{8}}
+        approxCost ?? "-",
 
-            // {{6}}
-            natureOfWork || "-",
+        // {{9}}
+        companyData.contactNumber,
+      ],
+    });
 
-            // {{7}}
-            job.scheduleDate,
+    // customer message
+    await sendWhatsAppTemplate({
+      to: customerExists.mobileNumber,
 
-            // {{8}}
-            approxCost ?? "-",
+      templateName: "register",
 
-            // {{9}}
-            "+91 870 773 3977",
-          ],
-        });
-      }
+      namespace: process.env.NAMESPACE,
 
-      if (customerExists) {
-        const customerNumber = "+91 870 773 3977";
-        await sendWhatsAppTemplate({
-          to: customerNumber,
+      variables: [
+        // {{1}}
+        customerExists.name || "Customer",
 
-          templateName: "register",
+        // {{2}}
+        serviceCenter.name,
 
-          namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
+        // {{3}}
+        otp,
 
-          variables: [
-            // {{1}}
-            customerExists.name || "Customer",
+        // {{4}}
+        formatIndiaDateTime(job.complaintDate) || "-",
 
-            // {{2}}
-            serviceCenter.name,
+        // {{5}}
+        job.complaintNumber || "-",
 
-            // {{3}}
-            code,
+        // {{6}}
+        brand || "-",
 
-            // {{4}}
-            job.complaintDate || "-",
+        // {{7}}
+        product,
 
-            // {{5}}
-            job.complaintNumber || "-",
+        // {{8}}
+        formatIndiaDateTime(job.scheduleDate),
 
-            // {{6}}
-            brand || "-",
+        // {{9}}
+        approxCost ?? "-",
 
-            // {{7}}
-            product,
-            
-            // {{8}}
-            job.scheduleDate,
+        // {{10}}
+        companyData.contactNumber,
+      ],
+    });
 
-            // {{9}}
-            approxCost ?? "-",
-
-            // {{10}}
-            customerNumber,
-          ],
-        });
-      }
-    }
-
-    // return res.status(201).json({
-    //   success: true,
-    //   message: "Job created",
-    //   data: job,
-    // });
+    return res.status(201).json({
+      success: true,
+      message: "Job created",
+      data: job,
+    });
   } catch (error) {
     console.error("createJob error:", error);
 

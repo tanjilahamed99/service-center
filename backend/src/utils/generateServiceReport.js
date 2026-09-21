@@ -18,6 +18,26 @@ function fetchImageBuffer(url) {
   });
 }
 
+const IST = "Asia/Kolkata";
+
+// Without an explicit locale/timeZone, toLocaleString() uses whatever the
+// server itself is running in (often UTC on a VPS) — this pins every date
+// in the report to India, regardless of the server's own timezone.
+function formatIST(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-IN", {
+    timeZone: IST,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 async function generateServiceReportPDF(job, options = {}) {
   const {
     companyName = job.company?.companyName || "Service Company",
@@ -131,7 +151,7 @@ async function generateServiceReportPDF(job, options = {}) {
         job.customer?.name?.toUpperCase() || "CUSTOMER NAME NOT AVAILABLE",
         M,
         leftY,
-        { width: colW, bold: true }
+        { width: colW, bold: true },
       );
     leftY = doc.y + 2;
     doc
@@ -147,7 +167,9 @@ async function generateServiceReportPDF(job, options = {}) {
         .fontSize(8)
         .fillColor(colors.label)
         .text(label, M, leftY, { width: 70, continued: true });
-      doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 70 });
+      doc
+        .fillColor(colors.value)
+        .text(`: ${value ?? "-"}`, { width: colW - 70 });
       leftY = doc.y + 3;
     });
 
@@ -155,21 +177,23 @@ async function generateServiceReportPDF(job, options = {}) {
 
     const complaintRows = [
       ["Job No", job.complaintNumber],
-      ["Book Date & Time", new Date(job.complaintDate).toLocaleString()],
+      ["Book Date & Time", formatIST(job.complaintDate)],
       ["Service Engineer", job.assignedServiceEngineer?.name || "-"],
       ["Job Status", job.status],
-      [
-        "Solve Date & Time",
-        job.solveDate ? new Date(job.solveDate).toLocaleString() : "-",
-      ],
+      ["Solve Date & Time", formatIST(job.solveDate)],
     ];
     let rightYCursor = rightY;
     complaintRows.forEach(([label, value]) => {
       doc
         .fontSize(8)
         .fillColor(colors.label)
-        .text(label, M + W / 2 + 10, rightYCursor, { width: 90, continued: true });
-      doc.fillColor(colors.value).text(`: ${value ?? "-"}`, { width: colW - 90 });
+        .text(label, M + W / 2 + 10, rightYCursor, {
+          width: 90,
+          continued: true,
+        });
+      doc
+        .fillColor(colors.value)
+        .text(`: ${value ?? "-"}`, { width: colW - 90 });
       rightYCursor = doc.y + 3;
     });
 
@@ -221,7 +245,10 @@ async function generateServiceReportPDF(job, options = {}) {
 
     // ---------- Call Closure Details table ----------
     // Rate/Total columns removed — quantity only, per request.
-    doc.fontSize(9).fillColor(colors.heading).text("Call Closure Details", M, doc.y);
+    doc
+      .fontSize(9)
+      .fillColor(colors.heading)
+      .text("Call Closure Details", M, doc.y);
     doc.moveDown(0.3);
 
     const cols = [
@@ -244,7 +271,10 @@ async function generateServiceReportPDF(job, options = {}) {
     const parts = job.consumedParts?.length ? job.consumedParts : [];
     if (parts.length === 0) {
       doc.rect(M, ty, W, rowH).stroke(colors.line);
-      doc.fillColor(colors.label).fontSize(8).text("No spare parts used", M + 4, ty + 6);
+      doc
+        .fillColor(colors.label)
+        .fontSize(8)
+        .text("No spare parts used", M + 4, ty + 6);
       ty += rowH;
     } else {
       parts.forEach((p, i) => {
@@ -280,7 +310,9 @@ async function generateServiceReportPDF(job, options = {}) {
       .fontSize(10)
       .fillColor(colors.value)
       .text("Approximate Cost", M, py, { width: 120, continued: true });
-    doc.fillColor(colors.value).text(`: Rs. ${job.approxCost ?? "-"}`, { width: 120 });
+    doc
+      .fillColor(colors.value)
+      .text(`: Rs. ${job.approxCost ?? "-"}`, { width: 120 });
     py = doc.y + 3;
 
     const photoX = M + W / 2 + 10;
@@ -288,10 +320,16 @@ async function generateServiceReportPDF(job, options = {}) {
     const photoBoxSize = 90;
     if (photoBuffer) {
       try {
-        doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
-        doc.image(photoBuffer, photoX, photoY, { fit: [photoBoxSize, photoBoxSize] });
+        doc
+          .rect(photoX, photoY, photoBoxSize, photoBoxSize)
+          .stroke(colors.line);
+        doc.image(photoBuffer, photoX, photoY, {
+          fit: [photoBoxSize, photoBoxSize],
+        });
       } catch {
-        doc.rect(photoX, photoY, photoBoxSize, photoBoxSize).stroke(colors.line);
+        doc
+          .rect(photoX, photoY, photoBoxSize, photoBoxSize)
+          .stroke(colors.line);
         doc
           .fontSize(7)
           .fillColor(colors.label)
@@ -318,8 +356,13 @@ async function generateServiceReportPDF(job, options = {}) {
     doc.y = Math.max(py, photoY + photoBoxSize) + 15;
 
     // ---------- Work Done ----------
-    doc.fontSize(8).fillColor(colors.label).text("Work Done", M, doc.y, { continued: true });
-    doc.fillColor(colors.value).text(` : ${job.correctiveActionTaken || "work done"}`);
+    doc
+      .fontSize(8)
+      .fillColor(colors.label)
+      .text("Work Done", M, doc.y, { continued: true });
+    doc
+      .fillColor(colors.value)
+      .text(` : ${job.correctiveActionTaken || "work done"}`);
     doc.moveDown(0.8);
     doc
       .strokeColor(colors.line)
@@ -340,10 +383,15 @@ async function generateServiceReportPDF(job, options = {}) {
       "Spares comes with 30 Days Warranty.",
       "Material Once sold will not be taken back.",
     ];
-    doc.fontSize(7).fillColor(colors.label).text("TERMS & CONDITIONS", M, termsTop);
+    doc
+      .fontSize(7)
+      .fillColor(colors.label)
+      .text("TERMS & CONDITIONS", M, termsTop);
     doc.fontSize(6.5);
     terms.forEach((t, i) => {
-      doc.fillColor(colors.label).text(`${i + 1}. ${t}`, M, doc.y + 3, { width: W - 100 });
+      doc
+        .fillColor(colors.label)
+        .text(`${i + 1}. ${t}`, M, doc.y + 3, { width: W - 100 });
     });
 
     const sigY = termsTop;
@@ -355,7 +403,10 @@ async function generateServiceReportPDF(job, options = {}) {
     doc
       .fontSize(6)
       .fillColor(colors.label)
-      .text("Customer Signature", M + W - 90, sigY + 45, { width: 80, align: "center" });
+      .text("Customer Signature", M + W - 90, sigY + 45, {
+        width: 80,
+        align: "center",
+      });
 
     doc.y = Math.max(doc.y, sigY + 60) + 10;
 
@@ -369,10 +420,15 @@ async function generateServiceReportPDF(job, options = {}) {
     doc
       .fontSize(8)
       .fillColor(colors.heading)
-      .text(`SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`, M, doc.y, {
-        width: W,
-        align: "center",
-      });
+      .text(
+        `SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`,
+        M,
+        doc.y,
+        {
+          width: W,
+          align: "center",
+        },
+      );
     doc
       .fontSize(6)
       .fillColor(colors.label)
@@ -380,7 +436,7 @@ async function generateServiceReportPDF(job, options = {}) {
         "This is computer generated Service Report and does not require any signature.",
         M,
         doc.y + 3,
-        { width: W, align: "center" }
+        { width: W, align: "center" },
       );
     doc
       .fontSize(6)
