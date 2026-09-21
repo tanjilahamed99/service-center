@@ -376,7 +376,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
       templateName: "complete",
 
-      documentUrl: pdfUrl,
+      documentUrl: reportsDir,
 
       namespace: "33cc1787_7358_4523_965f_bc91ce7e5a01",
 
