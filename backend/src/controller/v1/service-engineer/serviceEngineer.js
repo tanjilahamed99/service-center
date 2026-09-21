@@ -245,21 +245,21 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     // Validate stock BEFORE touching anything, so a mid-way failure can't
     // leave some parts decremented and others not.
     const centerId = engineer.serviceCenter;
-    for (const part of consumedParts) {
-      if (!part.sparePart) continue; // free-text-only line item, no inventory link
-      const stock = await SparePartStock.findOne({
-        company: engineer.company,
-        sparePart: part.sparePart,
-        ownerType: "ServiceCenter",
-        ownerId: centerId,
-      });
-      if (!stock || stock.quantity < part.quantity) {
-        return res.status(409).json({
-          success: false,
-          message: `Not enough stock at your service center for this part (have ${stock?.quantity ?? 0}, need ${part.quantity}).`,
-        });
-      }
-    }
+    // for (const part of consumedParts) {
+    //   if (!part.sparePart) continue; // free-text-only line item, no inventory link
+    //   const stock = await SparePartStock.findOne({
+    //     company: engineer.company,
+    //     sparePart: part.sparePart,
+    //     ownerType: "ServiceCenter",
+    //     ownerId: centerId,
+    //   });
+    //   if (!stock || stock.quantity < part.quantity) {
+    //     return res.status(409).json({
+    //       success: false,
+    //       message: `Not enough stock at your service center for this part (have ${stock?.quantity ?? 0}, need ${part.quantity}).`,
+    //     });
+    //   }
+    // }
 
     const sparesTotal = consumedParts.reduce(
       (sum, part) => sum + (Number(part.quantity) || 0),
@@ -267,63 +267,63 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     );
 
     const job = await Job.findOneAndUpdate(
-      { _id: req.params.id, assignedServiceEngineer: engineer._id },
-      {
-        $set: {
-          status: "Completed",
-          solveDate: Date.now(),
-          consumedParts,
-          sparesTotal,
-          serviceCharge,
-          discount,
-          actualIssueFound,
-          correctiveActionTaken,
-          closurePhotos,
-          customerSignature,
-          closureOtpVerified: true,
-          ...(closureLocation?.latitude && closureLocation?.longitude
-            ? {
-                closureLocation: { ...closureLocation, capturedAt: Date.now() },
-              }
-            : {}),
-        },
-        $push: {
-          logs: {
-            at: Date.now(),
-            actor: `Service Engineer:${engineer._id}`,
-            action: "Job closed",
-          },
-        },
-      },
-      { new: true, runValidators: true },
+      // { _id: req.params.id, assignedServiceEngineer: engineer._id },
+      // {
+      //   $set: {
+      //     status: "Completed",
+      //     solveDate: Date.now(),
+      //     consumedParts,
+      //     sparesTotal,
+      //     serviceCharge,
+      //     discount,
+      //     actualIssueFound,
+      //     correctiveActionTaken,
+      //     closurePhotos,
+      //     customerSignature,
+      //     closureOtpVerified: true,
+      //     ...(closureLocation?.latitude && closureLocation?.longitude
+      //       ? {
+      //           closureLocation: { ...closureLocation, capturedAt: Date.now() },
+      //         }
+      //       : {}),
+      //   },
+      //   $push: {
+      //     logs: {
+      //       at: Date.now(),
+      //       actor: `Service Engineer:${engineer._id}`,
+      //       action: "Job closed",
+      //     },
+      //   },
+      // },
+      // { new: true, runValidators: true },
     );
 
     // Decrement stock + log a Consume transaction for every linked part.
-    for (const part of consumedParts) {
-      if (!part.sparePart) continue;
-      await SparePartStock.updateOne(
-        {
-          company: engineer.company,
-          sparePart: part.sparePart,
-          ownerType: "ServiceCenter",
-          ownerId: centerId,
-        },
-        { $inc: { quantity: -part.quantity } },
-      );
-      await SparePartTransaction.create({
-        company: engineer.company,
-        sparePart: part.sparePart,
-        type: "Consume",
-        fromType: "ServiceCenter",
-        fromId: centerId,
-        toType: null,
-        toId: null,
-        quantity: part.quantity,
-        job: job._id,
-        note: part.remarks,
-        actor: `Service Engineer:${engineer._id}`,
-      });
-    }
+    // for (const part of consumedParts) {
+    //   if (!part.sparePart) continue;
+    //   await SparePartStock.updateOne(
+    //     {
+    //       company: engineer.company,
+    //       sparePart: part.sparePart,
+    //       ownerType: "ServiceCenter",
+    //       ownerId: centerId,
+    //     },
+    //     { $inc: { quantity: -part.quantity } },
+    //   );
+    //   await SparePartTransaction.create({
+    //     company: engineer.company,
+    //     sparePart: part.sparePart,
+    //     type: "Consume",
+    //     fromType: "ServiceCenter",
+    //     fromId: centerId,
+    //     toType: null,
+    //     toId: null,
+    //     quantity: part.quantity,
+    //     job: job._id,
+    //     note: part.remarks,
+    //     actor: `Service Engineer:${engineer._id}`,
+    //   });
+    // }
 
     const populatedJob = await Job.findById(job._id)
       .populate("customer", "name mobileNumber email address")
