@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { compressImage } from "@/config/compressImage";
 
-const IMGBB_API_KEY = "f6f078838eb85ba39146571c65470cb2"; // https://api.imgbb.com/
+const IMGBB_API_KEY = "cf3e237cff891fb67b34bc023a1a5413"; // https://api.imgbb.com/
 
 export async function uploadFileToImgBB(file) {
   const formData = new FormData();
