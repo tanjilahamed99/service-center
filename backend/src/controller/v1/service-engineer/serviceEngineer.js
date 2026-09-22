@@ -389,7 +389,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       });
     }
 
-    // res.status(200).json({ success: true, message: "Job closed", data: job });
+    res.status(200).json({ success: true, message: "Job closed", data: job });
 
     generateAndSendServiceReport(job._id).catch((err) => {
       console.error(
