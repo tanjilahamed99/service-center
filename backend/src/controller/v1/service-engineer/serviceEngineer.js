@@ -242,12 +242,12 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       });
     }
 
-    const otpVerity = existing.otp === otp;
+    const otpNumber = Number(otp);
 
-    if (!otpVerity) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Incorrect OTP" });
+    const otpVerify = existing.otp === otpNumber;
+
+    if (!otpVerify) {
+      return res.status(400).json({ success: false, message: "Incorrect OTP" });
     }
 
     const centerId = engineer.serviceCenter;
