@@ -2,6 +2,8 @@
 const PDFDocument = require("pdfkit");
 const https = require("https");
 const http = require("http");
+const path = require("path");
+const fs = require("fs");
 
 function fetchImageBuffer(url) {
   return new Promise((resolve) => {
@@ -46,17 +48,19 @@ async function generateServiceReportPDF(job, options = {}) {
     state = "",
     salesPhone = "",
     supportPhone = "",
-    logoUrl = "https://i.ibb.co.com/6JGrB5ZQ/logo.png",
   } = options;
 
-  // FIX: was destructuring 5 variables out of a 3-element array, so
-  // `logoBuffer` was always undefined and the fetched logo silently landed
-  // in `trackQR` instead (which was never actually rendered as a QR code —
-  // there was no QRCode generation call anywhere in this file).
-  const [photoBuffer, sigBuffer, logoBuffer] = await Promise.all([
+  // Local logo
+  const logoPath = path.join(process.cwd(), "uploads", "assets", "logo.png");
+
+  const logoBuffer = fs.existsSync(logoPath)
+    ? await fs.promises.readFile(logoPath)
+    : null;
+
+  // Customer photo + signature
+  const [photoBuffer, sigBuffer] = await Promise.all([
     fetchImageBuffer(job.closurePhotos?.[0]),
     fetchImageBuffer(job.customerSignature),
-    logoUrl ? fetchImageBuffer(logoUrl) : null,
   ]);
 
   return new Promise((resolve, reject) => {
