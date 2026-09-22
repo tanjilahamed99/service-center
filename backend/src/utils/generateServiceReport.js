@@ -269,6 +269,7 @@ async function generateServiceReportPDF(job, options = {}) {
     ty += rowH;
 
     const parts = job.consumedParts?.length ? job.consumedParts : [];
+    
     if (parts.length === 0) {
       doc.rect(M, ty, W, rowH).stroke(colors.line);
       doc

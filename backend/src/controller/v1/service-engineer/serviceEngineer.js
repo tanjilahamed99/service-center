@@ -243,17 +243,12 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     }
 
     const otpNumber = Number(otp);
-
-    const otpVerify = existing.otp === otpNumber;
-
-    if (!otpVerify) {
+    if (existing.otp !== otpNumber) {
       return res.status(400).json({ success: false, message: "Incorrect OTP" });
     }
 
     const centerId = engineer.serviceCenter;
 
-    // Stock validation — re-enable once you're ready to test spare-parts
-    // consumption again; leaving disabled won't break anything else here.
     for (const part of consumedParts) {
       if (!part.sparePart) continue;
       const stock = await SparePartStock.findOne({
@@ -275,7 +270,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       0,
     );
 
-    // FIXED — the real filter/update/options are restored here.
     const job = await Job.findOneAndUpdate(
       { _id: req.params.id, assignedServiceEngineer: engineer._id },
       {
@@ -314,7 +308,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
         .json({ success: false, message: "Job not found while updating" });
     }
 
-    // Spare parts stock decrement — same note as above, re-enable together.
     for (const part of consumedParts) {
       if (!part.sparePart) continue;
       await SparePartStock.updateOne(
@@ -341,65 +334,19 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       });
     }
 
-    const populatedJob = await Job.findById(job._id)
-      .populate("customer", "name mobileNumber email address")
-      .populate("company", "companyName contactNumber gstNumber")
-      .populate("assignedServiceEngineer", "name");
+    // ---- Respond now. Everything the customer/frontend actually needs
+    // (job status = Completed) is already saved. The PDF report and the
+    // WhatsApp notification are nice-to-haves that involve slow, flaky
+    // network calls (image fetch, WhatsApp API) — they run in the
+    // background below instead of holding the response hostage.
+    res.status(200).json({ success: true, message: "Job closed", data: job });
 
-    const pdfBuffer = await generateServiceReportPDF(populatedJob, {
-      companyAddress: populatedJob.company.address,
-      gstin: populatedJob.company.gstNumber,
-      supportPhone: populatedJob.company.contactNumber,
+    generateAndSendServiceReport(job._id).catch((err) => {
+      console.error(
+        `Background report/notification failed for job ${job._id}:`,
+        err,
+      );
     });
-
-    const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir, { recursive: true });
-    }
-
-    // FIXED — this whole block was missing: the filename, the actual
-    // write to disk, and the public URL construction.
-    const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
-    fs.writeFileSync(path.join(reportsDir, filename), pdfBuffer);
-    const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
-
-    const formatIndiaDateTime = (date) => {
-      if (!date) return "-";
-      return new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }).format(new Date(date));
-    };
-
-    const support = populatedJob.company.contactNumber;
-
-    await sendWhatsAppTemplate({
-      to: populatedJob.customer.mobileNumber,
-      templateName: "complete",
-      documentUrl: pdfUrl,
-      namespace: process.env.NAMESPACE,
-      variables: [
-        populatedJob.customer?.name || "Customer",
-        formatIndiaDateTime(populatedJob.complaintDate),
-        populatedJob.complaintNumber,
-        populatedJob.brand || "-",
-        populatedJob.product || "-",
-        populatedJob.status || "-",
-        populatedJob.assignedServiceEngineer?.name || "Service Engineer",
-        formatIndiaDateTime(populatedJob.solveDate),
-        populatedJob.approxCost ?? "-",
-        support,
-      ],
-    });
-
-    return res
-      .status(200)
-      .json({ success: true, message: "Job closed", data: job });
   } catch (error) {
     console.error("serviceEngineerCloseJob error:", error);
     return res.status(500).json({
@@ -409,6 +356,68 @@ exports.serviceEngineerCloseJob = async (req, res) => {
     });
   }
 };
+
+// Runs after the response has already been sent. Generates the PDF, saves
+// it, and notifies the customer over WhatsApp — none of this blocks the
+// engineer's "job closed" confirmation anymore.
+async function generateAndSendServiceReport(jobId) {
+  const populatedJob = await Job.findById(jobId)
+    .populate("customer", "name mobileNumber email address")
+    .populate("company", "companyName contactNumber gstNumber address")
+    .populate("assignedServiceEngineer", "name")
+    // FIX: consumedParts stores `sparePart` as an ObjectId reference, not a
+    // plain name — without this populate, the PDF has nothing to print but
+    // "-" for every part. Adjust "name" below if your SparePart model calls
+    // the field something else (e.g. "partName").
+    .populate("consumedParts.sparePart", "name");
+
+  const pdfBuffer = await generateServiceReportPDF(populatedJob, {
+    companyAddress: populatedJob.company.address,
+    gstin: populatedJob.company.gstNumber,
+    supportPhone: populatedJob.company.contactNumber,
+  });
+
+  const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+
+  const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
+  await fs.promises.writeFile(path.join(reportsDir, filename), pdfBuffer);
+  const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
+
+  const formatIndiaDateTime = (date) => {
+    if (!date) return "-";
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(date));
+  };
+
+  await sendWhatsAppTemplate({
+    to: populatedJob.customer.mobileNumber,
+    templateName: "complete",
+    documentUrl: pdfUrl,
+    namespace: process.env.NAMESPACE,
+    variables: [
+      populatedJob.customer?.name || "Customer",
+      formatIndiaDateTime(populatedJob.complaintDate),
+      populatedJob.complaintNumber,
+      populatedJob.brand || "-",
+      populatedJob.product || "-",
+      populatedJob.status || "-",
+      populatedJob.assignedServiceEngineer?.name || "Service Engineer",
+      formatIndiaDateTime(populatedJob.solveDate),
+      populatedJob.approxCost ?? "-",
+      populatedJob.company.contactNumber,
+    ],
+  });
+}
 
 // GET /api/service-engineer/getJobLogs/:id
 exports.serviceEngineerGetJobLogs = async (req, res) => {
