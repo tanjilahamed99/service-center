@@ -52,6 +52,7 @@ const {
   serviceEngineerLogin,
   getAllSparePartTransactions,
   getSparePartStockByCenter,
+  getCustomersWithComplaints,
 } = require("../../controller/v1/company/company");
 const { companyCheck } = require("../../middlewares/validatoin");
 
@@ -75,6 +76,11 @@ router.get(
   "/getCustomerPreviousJobs/:customerId",
   companyCheck,
   getCustomerPreviousJobs,
+);
+router.get(
+  "/getCustomersWithComplaints",
+  companyCheck,
+  getCustomersWithComplaints,
 );
 
 // ---------- Lookups ----------

@@ -7,6 +7,7 @@ import {
   Wrench,
   Building2,
   UserCircle,
+  PersonStanding
 } from "lucide-react";
 import DashboardLayout from "@/components/SideBar";
 import PrivateRoutes from "@/components/PrivateRoutes/PrivateRoutes";
@@ -58,6 +59,12 @@ const NAV_ITEMS = [
         href: "/company/service-engineers",
       },
     ],
+  },
+
+  {
+    label: "Customers",
+    href: "/company/customers",
+    icon: PersonStanding,
   },
 
   {

@@ -759,6 +759,64 @@ exports.getCustomerPreviousJobs = async (req, res) => {
   }
 };
 
+// GET /api/companies/getCustomersWithComplaints
+exports.getCustomersWithComplaints = async (req, res) => {
+  try {
+    const company = req.user._id;
+
+    const customers = await Customer.find({ company })
+      .select("name mobileNumber alternateNumber address createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const customerIds = customers.map((customer) => customer._id);
+
+    const jobs = await Job.find({
+      company,
+      customer: { $in: customerIds },
+    })
+      .select(
+        "customer complaintNumber complaintDate brand product modelNumber status correctiveActionTaken actualIssueFound assignedServiceEngineer solveDate"
+      )
+      .populate("assignedServiceEngineer", "name")
+      .sort({ complaintDate: -1 })
+      .lean();
+
+    const complaintsByCustomer = {};
+
+    for (const job of jobs) {
+      const customerId = String(job.customer);
+
+      if (!complaintsByCustomer[customerId]) {
+        complaintsByCustomer[customerId] = [];
+      }
+
+      complaintsByCustomer[customerId].push(job);
+    }
+
+    const data = customers.map((customer) => ({
+      ...customer,
+      complaints:
+        complaintsByCustomer[String(customer._id)] || [],
+      complaintCount:
+        complaintsByCustomer[String(customer._id)]?.length || 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("getCustomersWithComplaints error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch customers and complaints",
+      error: error.message,
+    });
+  }
+};
+
 // ============ Lookups ============
 
 // GET /api/companies/getServiceCenters

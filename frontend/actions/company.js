@@ -146,3 +146,6 @@ export const getAllSparePartTransactions = (params = {}) =>
 
 export const getSparePartStockByCenter = (params = {}) =>
   API.get(`/company/getSparePartStockByCenter`, { params });
+
+export const getCustomersWithComplaints = () =>
+  API.get(`/company/getCustomersWithComplaints`);
