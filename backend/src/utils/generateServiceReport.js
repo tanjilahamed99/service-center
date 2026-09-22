@@ -46,7 +46,7 @@ async function generateServiceReportPDF(job, options = {}) {
     state = "",
     salesPhone = "",
     supportPhone = "",
-    logoUrl = "https://i.ibb.co.com/TMzvqPfG/mainlogo.png",
+    logoUrl = "remark",
   } = options;
 
   // FIX: was destructuring 5 variables out of a 3-element array, so

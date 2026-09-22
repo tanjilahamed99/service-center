@@ -441,6 +441,7 @@ export default function ServiceCenterJobsTable({
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
                 <th className="whitespace-nowrap px-4 py-3">Customer</th>
+                <th className="whitespace-nowrap px-4 py-3">Remark</th>
                 <th className="whitespace-nowrap px-4 py-3">Brand</th>
                 <th className="whitespace-nowrap px-4 py-3">Product</th>
                 <th className="whitespace-nowrap px-4 py-3">Model</th>
@@ -554,6 +555,9 @@ export default function ServiceCenterJobsTable({
                     </div>
                   </td>
 
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-navy-900">{job.remark}</p>
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <p className="text-navy-900">{job.brand}</p>
                   </td>

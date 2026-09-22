@@ -343,7 +343,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     const populatedJob = await Job.findById(job._id)
       .populate("customer", "name mobileNumber email address")
-      .populate("company", "companyName contactNumber")
+      .populate("company", "companyName contactNumber gstNumber")
       .populate("assignedServiceEngineer", "name");
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {

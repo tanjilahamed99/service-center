@@ -524,6 +524,10 @@ export default function JobsTable({
 
                 <th className="whitespace-nowrap px-4 py-3">Customer</th>
 
+                <th className="whitespace-nowrap px-4 py-3">remark</th>
+
+                <th className="whitespace-nowrap px-4 py-3">OTP</th>
+
                 <th className="whitespace-nowrap px-4 py-3">Brand</th>
                 <th className="whitespace-nowrap px-4 py-3">Product</th>
                 <th className="whitespace-nowrap px-4 py-3">Model</th>
@@ -657,6 +661,13 @@ export default function JobsTable({
                       </div>
                     </td>
 
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <p className="text-navy-900">{job.remark}</p>
+                    </td>
+
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <p className="text-navy-900">{job.otp}</p>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3.5">
                       <p className="text-navy-900">{job.brand}</p>
                     </td>
