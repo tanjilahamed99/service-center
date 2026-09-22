@@ -282,7 +282,7 @@ exports.createUser = async (req, res, next) => {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res.status(201).send({
+      return res.status(301).send({
         success: false,
         message: `user of  ${name} already registered!`,
       });

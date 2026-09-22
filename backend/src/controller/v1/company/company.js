@@ -144,7 +144,7 @@ exports.createJob = async (req, res) => {
 
     // service-center message
     await sendWhatsAppTemplate({
-      to: serviceCenter.contactNumber,
+      to: "+918604835001",
 
       templateName: "service_center",
 
@@ -181,51 +181,51 @@ exports.createJob = async (req, res) => {
     });
 
     // customer message
-    await sendWhatsAppTemplate({
-      to: customerExists.mobileNumber,
+    // await sendWhatsAppTemplate({
+    //   to: customerExists.mobileNumber,
 
-      templateName: "register",
+    //   templateName: "register",
 
-      namespace: process.env.NAMESPACE,
+    //   namespace: process.env.NAMESPACE,
 
-      variables: [
-        // {{1}}
-        customerExists.name || "Customer",
+    //   variables: [
+    //     // {{1}}
+    //     customerExists.name || "Customer",
 
-        // {{2}}
-        serviceCenter.name,
+    //     // {{2}}
+    //     serviceCenter.name,
 
-        // {{3}}
-        otp,
+    //     // {{3}}
+    //     otp,
 
-        // {{4}}
-        formatIndiaDateTime(job.complaintDate) || "-",
+    //     // {{4}}
+    //     formatIndiaDateTime(job.complaintDate) || "-",
 
-        // {{5}}
-        job.complaintNumber || "-",
+    //     // {{5}}
+    //     job.complaintNumber || "-",
 
-        // {{6}}
-        brand || "-",
+    //     // {{6}}
+    //     brand || "-",
 
-        // {{7}}
-        product,
+    //     // {{7}}
+    //     product,
 
-        // {{8}}
-        formatIndiaDateTime(job.scheduleDate),
+    //     // {{8}}
+    //     formatIndiaDateTime(job.scheduleDate),
 
-        // {{9}}
-        approxCost ?? "-",
+    //     // {{9}}
+    //     approxCost ?? "-",
 
-        // {{10}}
-        companyData.contactNumber,
-      ],
-    });
+    //     // {{10}}
+    //     companyData.contactNumber,
+    //   ],
+    // });
 
-    return res.status(201).json({
-      success: true,
-      message: "Job created",
-      data: job,
-    });
+    // return res.status(201).json({
+    //   success: true,
+    //   message: "Job created",
+    //   data: job,
+    // });
   } catch (error) {
     console.error("createJob error:", error);
 

@@ -23,6 +23,7 @@ import { createUsers, deleteUser, getUsers, updateUser } from "@/actions/admin";
 import { toast } from "sonner";
 import { formatDate } from "@/components/FormatDate";
 import Swal from "sweetalert2";
+import PhoneInput from "@/components/PhoneInput";
 
 const ROLE_CONFIG = {
   admin: {
@@ -53,6 +54,8 @@ export default function UsersPage() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [err, setErr] = useState(null);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -111,40 +114,56 @@ export default function UsersPage() {
     }));
   };
 
+  function handlePhoneChange(field, val) {
+    setForm((prev) => ({ ...prev, [field]: val }));
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErr(null);
 
-    if (editingUser) {
-      const updateData = {
-        name: form.name,
-        phone: form.phone,
-        ...(form.password ? { password: form.password } : {}),
-      };
+    try {
+      if (editingUser) {
+        const updateData = {
+          name: form.name,
+          phone: form.phone,
+          ...(form.password ? { password: form.password } : {}),
+        };
+        const { data } = await updateUser(editingUser._id, updateData);
 
-      const { data } = await updateUser(editingUser._id, updateData);
-      if (data.success) {
-        toast.success("User updated"); // "Login successful" was leftover copy-paste from somewhere else, not accurate here
+        if (!data.success) {
+          setErr(data.message || "Failed to update user");
+          return; // stop here — modal stays open, error stays visible
+        }
+
+        toast.success("User updated");
         setUsers((prev) =>
           prev.map((user) =>
             user._id === editingUser._id ? { ...data.data } : user,
           ),
         );
-      }
-    } else {
-      const newUser = {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-      };
-      const { data } = await createUsers(newUser);
-      if (data.success) {
-        setUsers((prev) => [data.data, ...prev]);
-        toast.success("Login successful");
-      }
-    }
+      } else {
+        const { data } = await createUsers({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+        });
 
-    closeModal();
+        if (!data.success) {
+          setErr(data.message || "Failed to create user");
+          return;
+        }
+
+        setUsers((prev) => [data.data, ...prev]);
+        toast.success("User created"); // was "Login successful" — copy-paste leftover
+      }
+
+      closeModal(); // only reached when nothing above returned early
+    } catch (error) {
+      setErr(error.response?.data?.message || "Server issue");
+      // no closeModal() here — that's the whole point
+    }
   };
 
   const handleDelete = (user) => {
@@ -573,17 +592,12 @@ export default function UsersPage() {
                 />
               </FormField>
 
-              {/* Phone */}
-              <FormField label="Phone Number">
-                <input
-                  type="tel"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="Enter phone number"
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-electric-400 focus:bg-white focus:ring-2 focus:ring-electric-400/10"
-                />
-              </FormField>
+              <PhoneInput
+                label="Contact Number"
+                required
+                value={form.phone}
+                onChange={(val) => handlePhoneChange("phone", val)}
+              />
 
               {/* Password */}
               {!editingUser && (
@@ -633,6 +647,12 @@ export default function UsersPage() {
                     </button>
                   </div>
                 </FormField>
+              )}
+
+              {err && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600">
+                  {err}
+                </div>
               )}
 
               {/* Actions */}

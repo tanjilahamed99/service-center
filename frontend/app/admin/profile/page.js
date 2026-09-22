@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getProfile, updateProfile, changePassword } from "@/actions/admin";
+import PhoneInput from "@/components/PhoneInput";
 
 function SectionCard({ title, subtitle, children }) {
   return (
@@ -237,14 +238,14 @@ export default function CompanyProfilePage() {
               disabled
             />
           </Field>
-          <Field label="Contact Number">
-            <input
-              value={form.phone}
-              onChange={(e) => updateField("phone", e.target.value)}
-              className={inputClass}
-              type="number"
-            />
-          </Field>
+
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.phone}
+            onChange={(val) => updateField("phone", val)}
+          />
+
           <Field label="Address">
             <input
               value={form.address}

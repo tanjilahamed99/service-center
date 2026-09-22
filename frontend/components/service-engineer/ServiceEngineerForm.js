@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getServiceCenters } from "@/actions/company";
+import PhoneInput from "../PhoneInput";
 
 const inputClass =
   "w-full rounded-lg border border-gray-400 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
@@ -82,16 +83,12 @@ export default function ServiceEngineerForm({
               className={inputClass}
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">
-              Contact Number
-            </label>
-            <input
-              value={form.contactNumber}
-              onChange={(e) => update("contactNumber", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.contactNumber}
+            onChange={(val) => update("contactNumber", val)}
+          />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-navy-900">
               Aadhar Number

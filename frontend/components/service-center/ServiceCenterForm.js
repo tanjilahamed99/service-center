@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PhoneInput from "../PhoneInput";
 
 const inputClass =
   "w-full rounded-lg border border-gray-400 bg-slate-50 px-3 py-2 text-sm text-navy-900 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400";
@@ -16,7 +17,13 @@ const EMPTY_FORM = {
   status: "Active",
 };
 
-export default function ServiceCenterForm({ initialValues, mode = "create", submitting, error, onSubmit }) {
+export default function ServiceCenterForm({
+  initialValues,
+  mode = "create",
+  submitting,
+  error,
+  onSubmit,
+}) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initialValues });
 
   function update(field, value) {
@@ -35,32 +42,71 @@ export default function ServiceCenterForm({ initialValues, mode = "create", subm
       <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">Center Name</label>
-            <input required value={form.name} onChange={(e) => update("name", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">Contact Person</label>
-            <input value={form.contactPerson} onChange={(e) => update("contactPerson", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">Contact Number</label>
-            <input value={form.contactNumber} onChange={(e) => update("contactNumber", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">GST Number</label>
-            <input value={form.gstNumber} onChange={(e) => update("gstNumber", e.target.value)} className={inputClass} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">Address</label>
-            <textarea rows={2} value={form.address} onChange={(e) => update("address", e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-navy-900">Username</label>
-            <input required value={form.username} onChange={(e) => update("username", e.target.value)} className={inputClass} />
+            <label className="mb-1.5 block text-sm font-medium text-navy-900">
+              Center Name
+            </label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              className={inputClass}
+            />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-navy-900">
-              {mode === "edit" ? "New Password (leave blank to keep current)" : "Password"}
+              Contact Person
+            </label>
+            <input
+              value={form.contactPerson}
+              onChange={(e) => update("contactPerson", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.contactNumber}
+            onChange={(val) => update("contactNumber", val)}
+          />
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-900">
+              GST Number
+            </label>
+            <input
+              value={form.gstNumber}
+              onChange={(e) => update("gstNumber", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-medium text-navy-900">
+              Address
+            </label>
+            <textarea
+              rows={2}
+              value={form.address}
+              onChange={(e) => update("address", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-900">
+              Username
+            </label>
+            <input
+              required
+              value={form.username}
+              onChange={(e) => update("username", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-navy-900">
+              {mode === "edit"
+                ? "New Password (leave blank to keep current)"
+                : "Password"}
             </label>
             <input
               type="password"
@@ -72,8 +118,13 @@ export default function ServiceCenterForm({ initialValues, mode = "create", subm
           </div>
           {mode === "edit" && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-navy-900">Status</label>
-              <select value={form.status} onChange={(e) => update("status", e.target.value)} className={inputClass}>
+              <label className="mb-1.5 block text-sm font-medium text-navy-900">
+                Status
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) => update("status", e.target.value)}
+                className={inputClass}>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
               </select>
@@ -89,7 +140,11 @@ export default function ServiceCenterForm({ initialValues, mode = "create", subm
           type="submit"
           disabled={submitting}
           className="rounded-lg bg-gradient-to-r from-electric-500 to-electric-400 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-electric-500/30 hover:brightness-110 disabled:opacity-60">
-          {submitting ? "Saving…" : mode === "edit" ? "Save Changes" : "Create Service Center"}
+          {submitting
+            ? "Saving…"
+            : mode === "edit"
+              ? "Save Changes"
+              : "Create Service Center"}
         </button>
       </div>
     </form>

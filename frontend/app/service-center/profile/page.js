@@ -6,6 +6,7 @@ import {
   updateProfile,
   changePassword,
 } from "@/actions/service-center";
+import PhoneInput from "@/components/PhoneInput";
 
 function SectionCard({ title, subtitle, children }) {
   return (
@@ -228,7 +229,6 @@ export default function ServiceCenterProfilePage() {
               {profileSuccess}
             </div>
           )}
-
           <Field label="Full Name">
             <input
               required
@@ -244,13 +244,12 @@ export default function ServiceCenterProfilePage() {
               className={inputClass}
             />
           </Field>
-          <Field label="Contact Number">
-            <input
-              value={form.contactNumber}
-              onChange={(e) => updateField("contactNumber", e.target.value)}
-              className={inputClass}
-            />
-          </Field>
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.contactNumber}
+            onChange={(val) => updateField("contactNumber", val)}
+          />
           <Field label="GST Number">
             <input
               value={form.gstNumber}
@@ -273,7 +272,6 @@ export default function ServiceCenterProfilePage() {
               className={inputClass}
             />
           </Field>
-
           <div className="sm:col-span-2 flex justify-end">
             <button
               type="submit"

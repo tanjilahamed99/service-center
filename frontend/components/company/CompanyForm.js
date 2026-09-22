@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import PhoneInput from "../PhoneInput";
 
 const DEFAULT_VALUES = {
   companyName: "",
@@ -63,6 +64,10 @@ export default function CompanyForm({
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function handlePhoneChange(field, val) {
+    setForm((prev) => ({ ...prev, [field]: val }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setIsSaving(true);
@@ -109,16 +114,12 @@ export default function CompanyForm({
               className="input"
             />
           </Field>
-          <Field label="Contact Number" required>
-            <input
-              name="contactNumber"
-              type="tel"
-              required
-              value={form.contactNumber}
-              onChange={handleChange}
-              className="input"
-            />
-          </Field>
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.contactNumber}
+            onChange={(val) => handlePhoneChange("contactNumber", val)}
+          />
         </div>
         <div className="mt-5">
           <Field label="Address" required>

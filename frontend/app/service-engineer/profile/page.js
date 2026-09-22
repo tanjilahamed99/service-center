@@ -6,6 +6,7 @@ import {
   updateProfile,
   changePassword,
 } from "@/actions/service-engineer";
+import PhoneInput from "@/components/PhoneInput";
 
 function SectionCard({ title, subtitle, children }) {
   return (
@@ -89,8 +90,6 @@ export default function ServiceEngineerProfilePage() {
         setIsLoading(true);
         const res = await getProfile();
         const data = res?.data?.data;
-
-        console.log(data);
 
         setProfile(data);
         setForm({
@@ -235,13 +234,12 @@ export default function ServiceEngineerProfilePage() {
               className={inputClass}
             />
           </Field>
-          <Field label="Contact Number">
-            <input
-              value={form.contactNumber}
-              onChange={(e) => updateField("contactNumber", e.target.value)}
-              className={inputClass}
-            />
-          </Field>
+          <PhoneInput
+            label="Contact Number"
+            required
+            value={form.contactNumber}
+            onChange={(val) => updateField("contactNumber", val)}
+          />
           <Field label="Aadhar Number">
             <input
               value={form.aadharNumber}

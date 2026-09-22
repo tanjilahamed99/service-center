@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "./Modal";
+import PhoneInput from "../PhoneInput";
 
 const EMPTY_FORM = {
   name: "",
@@ -48,7 +49,7 @@ export default function AddCustomerModal({ open, onClose, onSave }) {
             className="w-full rounded-lg border border-slate-600 bg-slate-50 text-black px-3 py-2 text-sm focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400"
           />
         </div>
-        <div>
+        {/* <div>
           <label className="mb-1.5 block text-sm font-medium text-navy-900">
             Mobile Number
           </label>
@@ -58,7 +59,13 @@ export default function AddCustomerModal({ open, onClose, onSave }) {
             onChange={(e) => update("mobileNumber", e.target.value)}
             className="w-full rounded-lg border border-slate-600 bg-slate-50 text-black px-3 py-2 text-sm focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400"
           />
-        </div>
+        </div> */}
+        <PhoneInput
+          label="Mobile Number"
+          required
+          value={form.mobileNumber}
+          onChange={(val) => update("mobileNumber", val)}
+        />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-navy-900">
             Address
