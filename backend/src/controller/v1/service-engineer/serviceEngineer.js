@@ -242,6 +242,14 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       });
     }
 
+    const otpVerity = existing.otp === otp;
+
+    if (!otpVerity) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Incorrect OTP" });
+    }
+
     const centerId = engineer.serviceCenter;
 
     // Stock validation — re-enable once you're ready to test spare-parts
@@ -372,7 +380,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 
     await sendWhatsAppTemplate({
       to: populatedJob.customer.mobileNumber,
-      // to: "+91 870 773 3977",
       templateName: "complete",
       documentUrl: pdfUrl,
       namespace: process.env.NAMESPACE,
