@@ -196,6 +196,61 @@ exports.serviceEngineerHoldJob = async (req, res) => {
   }
 };
 
+async function generateAndSendServiceReport(jobId) {
+  const populatedJob = await Job.findById(jobId)
+    .populate("customer", "name mobileNumber email address")
+    .populate("company", "companyName contactNumber gstNumber address")
+    .populate("assignedServiceEngineer", "name")
+    .populate("consumedParts.sparePart", "spareName brand product unit"); // FIXED — "name" doesn't exist on SparePart
+
+  const pdfBuffer = await generateServiceReportPDF(populatedJob, {
+    companyAddress: populatedJob.company.address,
+    gstin: populatedJob.company.gstNumber,
+    supportPhone: populatedJob.company.contactNumber,
+  });
+
+  const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+
+  const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
+  await fs.promises.writeFile(path.join(reportsDir, filename), pdfBuffer);
+  const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
+
+  const formatIndiaDateTime = (date) => {
+    if (!date) return "-";
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(date));
+  };
+
+  await sendWhatsAppTemplate({
+    to: populatedJob.customer.mobileNumber,
+    templateName: "complete",
+    documentUrl: pdfUrl,
+    namespace: process.env.NAMESPACE,
+    variables: [
+      populatedJob.customer?.name || "Customer",
+      formatIndiaDateTime(populatedJob.complaintDate),
+      populatedJob.complaintNumber,
+      populatedJob.brand || "-",
+      populatedJob.product || "-",
+      populatedJob.status || "-",
+      populatedJob.assignedServiceEngineer?.name || "Service Engineer",
+      formatIndiaDateTime(populatedJob.solveDate),
+      populatedJob.approxCost ?? "-",
+      populatedJob.company.contactNumber,
+    ],
+  });
+}
+
 exports.serviceEngineerCloseJob = async (req, res) => {
   try {
     const engineer = await ServiceEngineer.findById(req.user._id);
@@ -334,12 +389,7 @@ exports.serviceEngineerCloseJob = async (req, res) => {
       });
     }
 
-    // ---- Respond now. Everything the customer/frontend actually needs
-    // (job status = Completed) is already saved. The PDF report and the
-    // WhatsApp notification are nice-to-haves that involve slow, flaky
-    // network calls (image fetch, WhatsApp API) — they run in the
-    // background below instead of holding the response hostage.
-    res.status(200).json({ success: true, message: "Job closed", data: job });
+    // res.status(200).json({ success: true, message: "Job closed", data: job });
 
     generateAndSendServiceReport(job._id).catch((err) => {
       console.error(
@@ -360,64 +410,6 @@ exports.serviceEngineerCloseJob = async (req, res) => {
 // Runs after the response has already been sent. Generates the PDF, saves
 // it, and notifies the customer over WhatsApp — none of this blocks the
 // engineer's "job closed" confirmation anymore.
-async function generateAndSendServiceReport(jobId) {
-  const populatedJob = await Job.findById(jobId)
-    .populate("customer", "name mobileNumber email address")
-    .populate("company", "companyName contactNumber gstNumber address")
-    .populate("assignedServiceEngineer", "name")
-    // FIX: consumedParts stores `sparePart` as an ObjectId reference, not a
-    // plain name — without this populate, the PDF has nothing to print but
-    // "-" for every part. Adjust "name" below if your SparePart model calls
-    // the field something else (e.g. "partName").
-    .populate("consumedParts.sparePart", "name");
-
-  const pdfBuffer = await generateServiceReportPDF(populatedJob, {
-    companyAddress: populatedJob.company.address,
-    gstin: populatedJob.company.gstNumber,
-    supportPhone: populatedJob.company.contactNumber,
-  });
-
-  const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
-  }
-
-  const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
-  await fs.promises.writeFile(path.join(reportsDir, filename), pdfBuffer);
-  const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
-
-  const formatIndiaDateTime = (date) => {
-    if (!date) return "-";
-    return new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(date));
-  };
-
-  await sendWhatsAppTemplate({
-    to: populatedJob.customer.mobileNumber,
-    templateName: "complete",
-    documentUrl: pdfUrl,
-    namespace: process.env.NAMESPACE,
-    variables: [
-      populatedJob.customer?.name || "Customer",
-      formatIndiaDateTime(populatedJob.complaintDate),
-      populatedJob.complaintNumber,
-      populatedJob.brand || "-",
-      populatedJob.product || "-",
-      populatedJob.status || "-",
-      populatedJob.assignedServiceEngineer?.name || "Service Engineer",
-      formatIndiaDateTime(populatedJob.solveDate),
-      populatedJob.approxCost ?? "-",
-      populatedJob.company.contactNumber,
-    ],
-  });
-}
 
 // GET /api/service-engineer/getJobLogs/:id
 exports.serviceEngineerGetJobLogs = async (req, res) => {
