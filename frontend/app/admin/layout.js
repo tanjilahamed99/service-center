@@ -53,13 +53,13 @@ const NAV_ITEMS = [
 
 export default function CompanyLayout({ children }) {
   return (
-    <PrivateRoutes allowedRoles={["admin"]}>
+    // <PrivateRoutes allowedRoles={["admin"]}>
       <DashboardLayout
         navItems={NAV_ITEMS}
         brandName="Service CRM"
         brandShortName="AT">
         {children}
       </DashboardLayout>
-    </PrivateRoutes>
+    // </PrivateRoutes>
   );
 }
