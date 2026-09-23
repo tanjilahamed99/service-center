@@ -178,7 +178,7 @@ export default function UpdateJobStatusModal({
     <Modal
       onClose={handleClose}
       open={open}
-      title={`Update Status — ${job.complaintNumber ?? job._id}`}>
+      title={`Update Status — ${job._id.slice(-5)}`}>
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-navy-900">
