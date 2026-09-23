@@ -107,9 +107,6 @@ export default function JobsListPage({ variant, title, subtitle }) {
         subtitle={subtitle}
         jobs={jobs}
         variant={variant}
-        // These now carry {_id, name} objects — AssignJobModal needs to submit
-        // the _id as `serviceCenter`, not the display name, since the backend
-        // expects an ObjectId.
         serviceCenterOptions={serviceCenters}
         serviceEngineerOptions={serviceEngineers}
         onEditJob={(job) => console.log("Edit", job._id)}

@@ -68,7 +68,10 @@ export default function ViewLogsModal({ open, onClose, job }) {
   const sortedLogs = [...logs].sort((a, b) => new Date(b.at) - new Date(a.at));
 
   return (
-    <Modal open={open} onClose={onClose} title={`Job Logs — ${job?.complaintNumber ?? job?.id ?? ""}`}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Job Logs — ${job?._id.slice(-5) ?? ""}`}>
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
           {sortedLogs.length} {sortedLogs.length === 1 ? "entry" : "entries"}
@@ -79,7 +82,9 @@ export default function ViewLogsModal({ open, onClose, job }) {
           how the surrounding Modal sizes itself. */}
       <div className="max-h-[60vh] overflow-y-auto pr-1 pt-4">
         {sortedLogs.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">No log entries yet.</p>
+          <p className="py-6 text-center text-sm text-slate-400">
+            No log entries yet.
+          </p>
         ) : (
           <ol className="space-y-0">
             {sortedLogs.map((log, idx) => {
@@ -90,13 +95,18 @@ export default function ViewLogsModal({ open, onClose, job }) {
               return (
                 <li key={idx} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
                       <Icon className="h-3.5 w-3.5" />
                     </span>
-                    {!isLast && <span className="mt-1 w-px flex-1 bg-slate-200" />}
+                    {!isLast && (
+                      <span className="mt-1 w-px flex-1 bg-slate-200" />
+                    )}
                   </div>
                   <div className="pb-5">
-                    <p className="text-sm font-medium text-navy-900">{log.action}</p>
+                    <p className="text-sm font-medium text-navy-900">
+                      {log.action}
+                    </p>
                     <p className="mt-0.5 text-xs text-slate-400">
                       {formatLogDate(log.at)}
                       <span className="mx-1.5">·</span>

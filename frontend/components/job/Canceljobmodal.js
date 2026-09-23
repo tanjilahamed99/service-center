@@ -14,7 +14,7 @@ export default function CancelJobModal({ open, onClose, job, onCancelJob }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Cancel Job ${job?.id ?? ""}`}>
+    <Modal open={open} onClose={onClose} title={`Cancel Job ${job?._id.slice(-5) ?? ""}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-sm text-slate-500">
           Cancelling requires a reason. This will be visible on the Cancelled

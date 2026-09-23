@@ -53,7 +53,7 @@ export default function ViewImagesModal({ open, job, onClose }) {
     <Modal
       open={open}
       onClose={onClose}
-      title={`Images — ${job.complaintNumber ?? job._id}`}>
+      title={`Images — ${job._id.slice(-5) ?? ""}`}>
       <div className="space-y-5">
         {hasNothing && (
           <p className="text-sm text-slate-400">
