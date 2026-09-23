@@ -124,16 +124,18 @@ exports.createJob = async (req, res) => {
       uploadFile,
 
       remark: remark || "",
-      otp,
 
-      logs: [
-        {
-          at: Date.now(),
-          actor: req.user.name || "Company Admin",
-          action: `Job SL${job._id.slice(-5)} registered`,
-        },
-      ],
+      otp,
     });
+
+    // Now job._id exists
+    job.logs.push({
+      at: Date.now(),
+      actor: req.user.name || "Company Admin",
+      action: `Job SL${job._id.toString().slice(-5)} registered`,
+    });
+
+    await job.save();
 
     const populatedJob = await Job.findById(job._id).populate(
       "assignedServiceCenter",
