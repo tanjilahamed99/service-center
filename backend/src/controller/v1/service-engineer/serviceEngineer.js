@@ -197,11 +197,21 @@ exports.serviceEngineerHoldJob = async (req, res) => {
 };
 
 async function generateAndSendServiceReport(jobId) {
+  const totalStart = Date.now();
+
+  console.log(`[REPORT] START ${jobId}`);
+
+  const dbStart = Date.now();
+
   const populatedJob = await Job.findById(jobId)
     .populate("customer", "name mobileNumber email address")
     .populate("company", "companyName contactNumber gstNumber address")
     .populate("assignedServiceEngineer", "name")
-    .populate("consumedParts.sparePart", "spareName brand product unit"); // FIXED — "name" doesn't exist on SparePart
+    .populate("consumedParts.sparePart", "spareName brand product unit");
+
+  console.log(`[REPORT] DB: ${Date.now() - dbStart}ms`);
+
+  const pdfStart = Date.now();
 
   const pdfBuffer = await generateServiceReportPDF(populatedJob, {
     companyAddress: populatedJob.company.address,
@@ -209,27 +219,25 @@ async function generateAndSendServiceReport(jobId) {
     supportPhone: populatedJob.company.contactNumber,
   });
 
+  console.log(`[REPORT] PDF: ${Date.now() - pdfStart}ms`);
+
   const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
+
   if (!fs.existsSync(reportsDir)) {
     fs.mkdirSync(reportsDir, { recursive: true });
   }
 
   const filename = `Complaint-${populatedJob.complaintNumber}.pdf`;
+
+  const writeStart = Date.now();
+
   await fs.promises.writeFile(path.join(reportsDir, filename), pdfBuffer);
+
+  console.log(`[REPORT] WRITE: ${Date.now() - writeStart}ms`);
+
   const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
 
-  const formatIndiaDateTime = (date) => {
-    if (!date) return "-";
-    return new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(date));
-  };
+  const whatsappStart = Date.now();
 
   await sendWhatsAppTemplate({
     to: populatedJob.customer.mobileNumber,
@@ -249,6 +257,10 @@ async function generateAndSendServiceReport(jobId) {
       populatedJob.company.contactNumber,
     ],
   });
+
+  console.log(`[REPORT] WHATSAPP: ${Date.now() - whatsappStart}ms`);
+
+  console.log(`[REPORT] TOTAL: ${Date.now() - totalStart}ms`);
 }
 
 exports.serviceEngineerCloseJob = async (req, res) => {
