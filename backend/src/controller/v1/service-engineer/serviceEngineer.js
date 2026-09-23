@@ -197,32 +197,18 @@ exports.serviceEngineerHoldJob = async (req, res) => {
 };
 
 async function generateAndSendServiceReport(jobId) {
-  const totalStart = Date.now();
-
   console.log(`[REPORT] START ${jobId}`);
 
   try {
-    // --------------------------------------------------
-    // 1. Fetch job
-    // --------------------------------------------------
-    const dbStart = Date.now();
-
     const populatedJob = await Job.findById(jobId)
       .populate("customer", "name mobileNumber email address")
       .populate("company", "companyName contactNumber gstNumber address")
       .populate("assignedServiceEngineer", "name")
       .populate("consumedParts.sparePart", "spareName brand product unit");
 
-    console.log(`[REPORT] DB: ${Date.now() - dbStart}ms`);
-
     if (!populatedJob) {
       throw new Error(`Job ${jobId} not found`);
     }
-
-    // --------------------------------------------------
-    // 2. Generate PDF
-    // --------------------------------------------------
-    const pdfStart = Date.now();
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
       companyAddress: populatedJob.company?.address || "",
@@ -232,11 +218,6 @@ async function generateAndSendServiceReport(jobId) {
       supportPhone: populatedJob.company?.contactNumber || "",
     });
 
-    console.log(`[REPORT] PDF: ${Date.now() - pdfStart}ms`);
-
-    // --------------------------------------------------
-    // 3. Save PDF
-    // --------------------------------------------------
     const reportsDir = path.join(process.cwd(), "uploads", "service-reports");
 
     if (!fs.existsSync(reportsDir)) {
@@ -249,22 +230,10 @@ async function generateAndSendServiceReport(jobId) {
 
     const filePath = path.join(reportsDir, filename);
 
-    const writeStart = Date.now();
-
     await fs.promises.writeFile(filePath, pdfBuffer);
 
-    console.log(`[REPORT] WRITE: ${Date.now() - writeStart}ms`);
-
-    // --------------------------------------------------
-    // 4. Public PDF URL
-    // --------------------------------------------------
     const pdfUrl = `https://api-aceit.callbell.in/uploads/service-reports/${filename}`;
 
-    console.log(`[REPORT] PDF URL: ${pdfUrl}`);
-
-    // --------------------------------------------------
-    // 5. Format India Date/Time
-    // --------------------------------------------------
     const formatIndiaDateTime = (date) => {
       if (!date) return "-";
 
@@ -284,15 +253,6 @@ async function generateAndSendServiceReport(jobId) {
         hour12: true,
       }).format(parsedDate);
     };
-
-    // --------------------------------------------------
-    // 6. Send WhatsApp
-    // --------------------------------------------------
-    const whatsappStart = Date.now();
-
-    console.log(
-      `[REPORT] Sending WhatsApp to ${populatedJob.customer?.mobileNumber}`,
-    );
 
     await sendWhatsAppTemplate({
       to: populatedJob.customer.mobileNumber,
@@ -325,15 +285,6 @@ async function generateAndSendServiceReport(jobId) {
         populatedJob.company?.contactNumber || "-",
       ],
     });
-
-    console.log(`[REPORT] WHATSAPP: ${Date.now() - whatsappStart}ms`);
-
-    // --------------------------------------------------
-    // 7. Total
-    // --------------------------------------------------
-    console.log(`[REPORT] TOTAL: ${Date.now() - totalStart}ms`);
-
-    console.log(`[REPORT] SUCCESS ${jobId}`);
   } catch (error) {
     console.error(`[REPORT] FAILED ${jobId}:`, error);
 

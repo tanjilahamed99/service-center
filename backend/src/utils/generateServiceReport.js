@@ -5,26 +5,79 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 
-function fetchImageBuffer(url) {
+function fetchImageBuffer(url, redirectsLeft = 3) {
   return new Promise((resolve) => {
     if (!url) return resolve(null);
     const client = url.startsWith("https") ? https : http;
     client
       .get(url, (res) => {
-        if (res.statusCode !== 200) return resolve(null);
+        if (
+          [301, 302, 303, 307, 308].includes(res.statusCode) &&
+          res.headers.location &&
+          redirectsLeft > 0
+        ) {
+          res.resume();
+          return resolve(
+            fetchImageBuffer(res.headers.location, redirectsLeft - 1),
+          );
+        }
+        if (res.statusCode !== 200) {
+          console.warn(
+            `[PDF] Image fetch failed (status ${res.statusCode}) for ${url}`,
+          );
+          res.resume();
+          return resolve(null);
+        }
         const chunks = [];
         res.on("data", (c) => chunks.push(c));
         res.on("end", () => resolve(Buffer.concat(chunks)));
       })
-      .on("error", () => resolve(null));
+      .on("error", (err) => {
+        console.warn(`[PDF] Image fetch error for ${url}:`, err.message);
+        resolve(null);
+      });
   });
+}
+
+// Resolves an image value to a Buffer regardless of whether it's a genuine
+// remote URL or a path to a file already sitting on this VPS (same idea as
+// the logo, which is already read straight off disk). Tries local disk
+// first for anything that isn't clearly http(s), since that's how the logo
+// is stored and closure photos/signatures are most likely stored the same
+// way rather than fetched over the network.
+async function resolveImageBuffer(value) {
+  if (!value) return null;
+
+  if (/^https?:\/\//i.test(value)) {
+    return fetchImageBuffer(value);
+  }
+
+  if (value.startsWith("data:")) {
+    const base64 = value.split(",")[1];
+    return base64 ? Buffer.from(base64, "base64") : null;
+  }
+
+  // Treat as a local path. Strip a leading slash so it joins cleanly, and
+  // try both "as given" and "under uploads/" since we don't know which
+  // convention your upload code uses without seeing it.
+  const trimmed = value.replace(/^\/+/, "");
+  const candidates = [
+    path.join(process.cwd(), trimmed),
+    path.join(process.cwd(), "uploads", trimmed),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return fs.promises.readFile(candidate);
+    }
+  }
+
+  console.warn(`[PDF] Could not resolve image as URL or local file: ${value}`);
+  return null;
 }
 
 const IST = "Asia/Kolkata";
 
-// Without an explicit locale/timeZone, toLocaleString() uses whatever the
-// server itself is running in (often UTC on a VPS) — this pins every date
-// in the report to India, regardless of the server's own timezone.
 function formatIST(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -50,18 +103,21 @@ async function generateServiceReportPDF(job, options = {}) {
     supportPhone = "",
   } = options;
 
-  // Local logo
   const logoPath = path.join(process.cwd(), "uploads", "assets", "logo.png");
-
   const logoBuffer = fs.existsSync(logoPath)
     ? await fs.promises.readFile(logoPath)
     : null;
 
-  // Customer photo + signature
+  console.log("[PDF] closurePhotos[0]:", job.closurePhotos?.[0]);
+  console.log("[PDF] customerSignature:", job.customerSignature);
+
   const [photoBuffer, sigBuffer] = await Promise.all([
     fetchImageBuffer(job.closurePhotos?.[0]),
     fetchImageBuffer(job.customerSignature),
   ]);
+
+  console.log("[PDF] photoBuffer bytes:", photoBuffer?.length ?? 0);
+  console.log("[PDF] sigBuffer bytes:", sigBuffer?.length ?? 0);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
@@ -80,12 +136,10 @@ async function generateServiceReportPDF(job, options = {}) {
       brand: "#2563eb",
     };
 
-    // ---------- Header ----------
     if (logoBuffer) {
       try {
         doc.image(logoBuffer, M, M, { fit: [36, 36] });
       } catch {
-        // fall through to the badge below if the logo buffer isn't a valid image
         doc
           .fillColor(colors.brand)
           .circle(M + 18, M + 18, 18)
@@ -131,8 +185,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.8);
 
-    // ---------- Customer Details (left, plain lines) ----------
-    // ---------- Complaint Details (right, labeled rows) ----------
     const sectionStartY = doc.y;
     const colW = W / 2 - 10;
 
@@ -155,7 +207,10 @@ async function generateServiceReportPDF(job, options = {}) {
         job.customer?.name?.toUpperCase() || "CUSTOMER NAME NOT AVAILABLE",
         M,
         leftY,
-        { width: colW, bold: true },
+        {
+          width: colW,
+          bold: true,
+        },
       );
     leftY = doc.y + 2;
     doc
@@ -164,7 +219,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .text(job.customer?.address || "-", M, leftY, { width: colW });
     leftY = doc.y + 4;
 
-    // Email row removed — customers don't have an email on file.
     const customerRows = [["Mobile No", job.customer?.mobileNumber]];
     customerRows.forEach(([label, value]) => {
       doc
@@ -177,7 +231,7 @@ async function generateServiceReportPDF(job, options = {}) {
       leftY = doc.y + 3;
     });
 
-    const rightY = sectionStartY + 16; // aligns with where leftY's first row began
+    const rightY = sectionStartY + 16;
 
     const complaintRows = [
       ["Job No", job.complaintNumber],
@@ -209,7 +263,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.8);
 
-    // ---------- Product / Call Type / Actual Issue / Corrective Action ----------
     function threeColRow(items) {
       const colWidth = W / 3;
       const startY = doc.y;
@@ -247,8 +300,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.8);
 
-    // ---------- Call Closure Details table ----------
-    // Rate/Total columns removed — quantity only, per request.
     doc
       .fontSize(9)
       .fillColor(colors.heading)
@@ -285,7 +336,8 @@ async function generateServiceReportPDF(job, options = {}) {
       parts.forEach((p, i) => {
         doc.rect(M, ty, W, rowH).stroke(colors.line);
         tx = M;
-        const rowVals = [i + 1, p.spareName || "-", `${p.quantity ?? 0} PCS`];
+        const partName = p.sparePart?.spareName || p.sparePart?.product || "-";
+        const rowVals = [i + 1, partName, `${p.quantity ?? 0} PCS`];
         cols.forEach((c, ci) => {
           doc
             .fillColor(colors.value)
@@ -298,7 +350,6 @@ async function generateServiceReportPDF(job, options = {}) {
     }
     doc.y = ty + 15;
 
-    // ---------- Approximate Cost (left) + Picture of Work (right) ----------
     const sectionTop = doc.y;
     doc
       .fontSize(9)
@@ -309,7 +360,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .fillColor(colors.heading)
       .text("Picture of Work", M + W / 2 + 10, sectionTop, { underline: true });
 
-    // Cost text is now black (colors.value) instead of red (was colors.balance).
     let py = doc.y + 4;
     doc
       .fontSize(10)
@@ -360,7 +410,6 @@ async function generateServiceReportPDF(job, options = {}) {
 
     doc.y = Math.max(py, photoY + photoBoxSize) + 15;
 
-    // ---------- Work Done ----------
     doc
       .fontSize(8)
       .fillColor(colors.label)
@@ -376,10 +425,6 @@ async function generateServiceReportPDF(job, options = {}) {
       .stroke();
     doc.moveDown(0.6);
 
-    // ---------- Terms & Signature ----------
-    // Track/Pay QR codes removed — they were never actually generated (no
-    // QRCode call existed), and the buffer that used to land in `trackQR`
-    // by accident was really the logo, which now renders correctly above.
     const termsTop = doc.y;
     const terms = [
       "Payment Terms: The client shall pay the service provider within [insert timeframe, e.g., 30 days] from the date of invoice.",
@@ -415,7 +460,6 @@ async function generateServiceReportPDF(job, options = {}) {
 
     doc.y = Math.max(doc.y, sigY + 60) + 10;
 
-    // ---------- Footer ----------
     doc
       .strokeColor(colors.line)
       .moveTo(M, doc.y)
@@ -441,7 +485,10 @@ async function generateServiceReportPDF(job, options = {}) {
         "This is computer generated Service Report and does not require any signature.",
         M,
         doc.y + 3,
-        { width: W, align: "center" },
+        {
+          width: W,
+          align: "center",
+        },
       );
     doc
       .fontSize(6)
