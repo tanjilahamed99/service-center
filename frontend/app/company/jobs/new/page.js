@@ -66,7 +66,6 @@ export default function CreateJobPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [products, setProducts] = useState([]);
-  const [productsByBrand, setProductsByBrand] = useState([]);
 
   const [form, setForm] = useState({
     jobSource: "",
@@ -485,8 +484,8 @@ export default function CreateJobPage() {
             min="0"
             value={form.approxCost}
             onChange={(e) => update("approxCost", e.target.value)}
-            placeholder="र"
-            className={inputClass}
+            placeholder="₹"
+            className={`${inputClass} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
           />
         </Field>
       </SectionCard>

@@ -154,7 +154,8 @@ function RowActions({
         size={size}
         onClick={() => onViewLogs?.(job)}
       />
-      {canCancel && (
+
+      {job.status !== "Completed" && (
         <ActionButton
           label="Cancel Job"
           Icon={Ban}
@@ -512,7 +513,7 @@ export default function JobsTable({
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
 
-                <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
+                <th className="whitespace-nowrap px-4 py-3">Complaint Id</th>
 
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
 
@@ -575,7 +576,7 @@ export default function JobsTable({
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
-                      {job.complaintNumber}
+                      {job._id.slice(-5)}
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">

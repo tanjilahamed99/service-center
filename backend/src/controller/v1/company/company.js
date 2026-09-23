@@ -591,10 +591,10 @@ exports.cancelJob = async (req, res) => {
     if (!existing) {
       return res.status(404).json({ success: false, message: "Job not found" });
     }
-    if (existing.status !== "Registered") {
+    if (existing.status === "Completed") {
       return res.status(400).json({
         success: false,
-        message: `Only Registered jobs can be cancelled (current status: ${existing.status})`,
+        message: `Completed jobs can be cancelled (current status: ${existing.status})`,
       });
     }
 
@@ -776,7 +776,7 @@ exports.getCustomersWithComplaints = async (req, res) => {
       customer: { $in: customerIds },
     })
       .select(
-        "customer complaintNumber complaintDate brand product modelNumber status correctiveActionTaken actualIssueFound assignedServiceEngineer solveDate"
+        "customer complaintNumber complaintDate brand product modelNumber status correctiveActionTaken actualIssueFound assignedServiceEngineer solveDate",
       )
       .populate("assignedServiceEngineer", "name")
       .sort({ complaintDate: -1 })
@@ -796,10 +796,8 @@ exports.getCustomersWithComplaints = async (req, res) => {
 
     const data = customers.map((customer) => ({
       ...customer,
-      complaints:
-        complaintsByCustomer[String(customer._id)] || [],
-      complaintCount:
-        complaintsByCustomer[String(customer._id)]?.length || 0,
+      complaints: complaintsByCustomer[String(customer._id)] || [],
+      complaintCount: complaintsByCustomer[String(customer._id)]?.length || 0,
     }));
 
     return res.status(200).json({

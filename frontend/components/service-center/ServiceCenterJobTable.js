@@ -204,7 +204,8 @@ export default function ServiceCenterJobsTable({
         !search ||
         job?.complaintNumber?.toLowerCase().includes(search.toLowerCase()) ||
         job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        job?.customer?.mobileNumber?.includes(search);
+        job?.customer?.mobileNumber?.includes(search) ||
+        job?._id?.includes(search);
       const matchesStatus = !status || job?.status === status;
       const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
@@ -436,7 +437,7 @@ export default function ServiceCenterJobsTable({
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
-                <th className="whitespace-nowrap px-4 py-3">Complaint No.</th>
+                <th className="whitespace-nowrap px-4 py-3">Complaint Id</th>
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
@@ -486,7 +487,7 @@ export default function ServiceCenterJobsTable({
 
                   {/* Complaint Number */}
                   <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
-                    {job.complaintNumber}
+                    {job._id.slice(-5)}
                   </td>
 
                   {/* Booked */}

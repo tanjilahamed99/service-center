@@ -140,8 +140,7 @@ export default function JobsListPage({ variant, title, subtitle }) {
         open={!!imagesTarget}
         job={imagesTarget}
         onClose={() => setImagesTarget(null)}
-      />{" "}
-      {/* NEW */}
+      />
     </>
   );
 }

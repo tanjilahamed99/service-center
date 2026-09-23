@@ -29,8 +29,6 @@ export default function ServiceEngineerJobsListPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  console.log(jobs);
-
   const [logsTarget, setLogsTarget] = useState(null); // single job (view)
   const [statusTarget, setStatusTarget] = useState(null); // single job (update status)
 
