@@ -130,7 +130,7 @@ exports.createJob = async (req, res) => {
         {
           at: Date.now(),
           actor: req.user.name || "Company Admin",
-          action: `Job ${complaintNumber} registered`,
+          action: `Job SL${job._id.slice(-5)} registered`,
         },
       ],
     });

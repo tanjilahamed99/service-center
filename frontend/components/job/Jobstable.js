@@ -155,7 +155,7 @@ function RowActions({
         onClick={() => onViewLogs?.(job)}
       />
 
-      {job.status !== "Completed" && (
+      {job.status !== "Completed" && job.status !== "Cancelled" && (
         <ActionButton
           label="Cancel Job"
           Icon={Ban}

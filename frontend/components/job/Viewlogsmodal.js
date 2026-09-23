@@ -63,6 +63,9 @@ function formatLogDate(value) {
 
 export default function ViewLogsModal({ open, onClose, job }) {
   const logs = job?.logs ?? [];
+
+  console.log(logs);
+
   // Show most recent activity first — that's what you want to see first when
   // checking in on a job.
   const sortedLogs = [...logs].sort((a, b) => new Date(b.at) - new Date(a.at));
