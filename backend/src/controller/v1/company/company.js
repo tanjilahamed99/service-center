@@ -86,7 +86,7 @@ exports.createJob = async (req, res) => {
     if (existingPendingJob) {
       return res.status(409).json({
         success: false,
-        message: `This customer already has a pending complaint (${existingPendingJob.complaintNumber}, status: ${existingPendingJob.status}). Resolve or cancel it before creating a new one.`,
+        message: `This customer already has a pending complaint (SL${existingPendingJob._id.slice(-5)}, status: ${existingPendingJob.status}). Resolve or cancel it before creating a new one.`,
       });
     }
 
