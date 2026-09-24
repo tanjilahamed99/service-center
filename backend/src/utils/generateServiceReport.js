@@ -108,16 +108,10 @@ async function generateServiceReportPDF(job, options = {}) {
     ? await fs.promises.readFile(logoPath)
     : null;
 
-  console.log("[PDF] closurePhotos[0]:", job.closurePhotos?.[0]);
-  console.log("[PDF] customerSignature:", job.customerSignature);
-
   const [photoBuffer, sigBuffer] = await Promise.all([
     fetchImageBuffer(job.closurePhotos?.[0]),
     fetchImageBuffer(job.customerSignature),
   ]);
-
-  console.log("[PDF] photoBuffer bytes:", photoBuffer?.length ?? 0);
-  console.log("[PDF] sigBuffer bytes:", sigBuffer?.length ?? 0);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
@@ -233,8 +227,10 @@ async function generateServiceReportPDF(job, options = {}) {
 
     const rightY = sectionStartY + 16;
 
+    const complainid = "SL" + job._id;
+
     const complaintRows = [
-      ["Job No", job.complaintNumber],
+      ["Job No", complainid],
       ["Book Date & Time", formatIST(job.complaintDate)],
       ["Service Engineer", job.assignedServiceEngineer?.name || "-"],
       ["Job Status", job.status],

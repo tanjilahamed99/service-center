@@ -197,8 +197,6 @@ exports.serviceEngineerHoldJob = async (req, res) => {
 };
 
 async function generateAndSendServiceReport(jobId) {
-  console.log(`[REPORT] START ${jobId}`);
-
   try {
     const populatedJob = await Job.findById(jobId)
       .populate("customer", "name mobileNumber email address")
@@ -209,6 +207,8 @@ async function generateAndSendServiceReport(jobId) {
     if (!populatedJob) {
       throw new Error(`Job ${jobId} not found`);
     }
+
+    const complainid = "SL" + populatedJob._id;
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
       companyAddress: populatedJob.company?.address || "",
@@ -268,7 +268,7 @@ async function generateAndSendServiceReport(jobId) {
 
         formatIndiaDateTime(populatedJob.complaintDate),
 
-        populatedJob.complaintNumber,
+        complainid,
 
         populatedJob.brand || "-",
 

@@ -144,6 +144,8 @@ exports.createJob = async (req, res) => {
 
     const serviceCenter = populatedJob?.assignedServiceCenter;
 
+    const complainid = "SL" + job._id;
+
     // service-center message
     await sendWhatsAppTemplate({
       to: serviceCenter.contactNumber,
@@ -160,7 +162,7 @@ exports.createJob = async (req, res) => {
         formatIndiaDateTime(job.complaintDate),
 
         // {{3}}
-        complaintNumber,
+        complainid,
 
         // {{4}}
         brand || "-",
@@ -204,7 +206,7 @@ exports.createJob = async (req, res) => {
         formatIndiaDateTime(job.complaintDate) || "-",
 
         // {{5}}
-        job.complaintNumber || "-",
+        complainid || "-",
 
         // {{6}}
         brand || "-",
