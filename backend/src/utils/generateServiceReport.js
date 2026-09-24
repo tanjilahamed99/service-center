@@ -466,7 +466,7 @@ async function generateServiceReportPDF(job, options = {}) {
       .fontSize(8)
       .fillColor(colors.heading)
       .text(
-        `SALES : ${salesPhone}   |   CUSTOMER SUPPORT : ${supportPhone}`,
+        `CUSTOMER SUPPORT : ${supportPhone}`,
         M,
         doc.y,
         {
