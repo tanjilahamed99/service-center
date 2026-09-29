@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { STATUS_TONE, JOB_STATUS, JOB_STATUS_LIST } from "@/components/job/Constants";
+import {
+  STATUS_TONE,
+  JOB_STATUS,
+  JOB_STATUS_LIST,
+} from "@/components/job/Constants";
 import StatusBadge from "../job/Statusbadge";
 import {
   Search,
@@ -21,7 +25,10 @@ import DownloadExcelButton from "@/components/job/DownloadExcelButton";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
-const ASSIGNABLE_STATUSES = [JOB_STATUS.REGISTERED, JOB_STATUS.SERVICE_CENTER_ASSIGNED];
+const ASSIGNABLE_STATUSES = [
+  JOB_STATUS.REGISTERED,
+  JOB_STATUS.SERVICE_CENTER_ASSIGNED,
+];
 const BULK_SELECTABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
@@ -34,7 +41,8 @@ const selectClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
 
 function computeAgingDays(complaintDate, status) {
-  if (!complaintDate || status === "Completed" || status === "Cancelled") return null;
+  if (!complaintDate || status === "Completed" || status === "Cancelled")
+    return null;
   const diffMs = Date.now() - new Date(complaintDate).getTime();
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
@@ -53,8 +61,7 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}
-    >
+      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}>
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </button>
   );
@@ -74,7 +81,12 @@ function RowActions({ job, onAssignJob, onViewLogs, size = "md", status }) {
           />
         </>
       )}
-      <ActionButton label="View Logs" Icon={ScrollText} size={size} onClick={() => onViewLogs?.(job)} />
+      <ActionButton
+        label="View Logs"
+        Icon={ScrollText}
+        size={size}
+        onClick={() => onViewLogs?.(job)}
+      />
     </div>
   );
 }
@@ -85,7 +97,11 @@ function formatShortDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function formatDateTime(value) {
@@ -118,8 +134,12 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
       <Inbox className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
-      <p className="text-sm font-medium text-slate-500">No jobs match the current filters</p>
-      <p className="text-xs text-slate-400">Try clearing a filter or searching a different term.</p>
+      <p className="text-sm font-medium text-slate-500">
+        No jobs match the current filters
+      </p>
+      <p className="text-xs text-slate-400">
+        Try clearing a filter or searching a different term.
+      </p>
     </div>
   );
 }
@@ -159,18 +179,25 @@ export default function ServiceCenterJobsTable({
   const isAllVariant = variant === "all";
 
   const showStatusFilter = isAllVariant;
-  const showAssignAction = isAllVariant ? null : variant === "registered" || variant === "serviceCenter";
+  const showAssignAction = isAllVariant
+    ? null
+    : variant === "registered" || variant === "serviceCenter";
 
-  const showServiceEngineerFilter = isAllVariant || ["serviceEngineer", "hold"].includes(variant);
+  const showServiceEngineerFilter =
+    isAllVariant || ["serviceEngineer", "hold"].includes(variant);
   const showHoldReasonColumn = isAllVariant || variant === "hold";
   const showCancelReasonColumn = isAllVariant || variant === "cancelled";
   const showCancelAction = isAllVariant ? null : variant === "registered";
 
   function canAssignRow(job) {
-    return isAllVariant ? ASSIGNABLE_STATUSES.includes(job.status) : showAssignAction;
+    return isAllVariant
+      ? ASSIGNABLE_STATUSES.includes(job.status)
+      : showAssignAction;
   }
   function canCancelRow(job) {
-    return isAllVariant ? CANCELLABLE_STATUSES.includes(job.status) : showCancelAction;
+    return isAllVariant
+      ? CANCELLABLE_STATUSES.includes(job.status)
+      : showCancelAction;
   }
   function canSelectRow(job) {
     return BULK_SELECTABLE_STATUSES.includes(job.status);
@@ -188,11 +215,15 @@ export default function ServiceCenterJobsTable({
       const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
       const matchesNature = !nature || job?.natureOfWork === nature;
-      const matchesCenter = !serviceCenter || job?.assignedServiceCenter === serviceCenter;
-      const matchesEngineer = !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
+      const matchesCenter =
+        !serviceCenter || job?.assignedServiceCenter === serviceCenter;
+      const matchesEngineer =
+        !serviceEngineer || job?.assignedServiceEngineer === serviceEngineer;
 
       const jobDateStr = toISODateInZone(job?.complaintDate);
-      const matchesDateRange = (!dateFrom || jobDateStr >= dateFrom) && (!dateTo || jobDateStr <= dateTo);
+      const matchesDateRange =
+        (!dateFrom || jobDateStr >= dateFrom) &&
+        (!dateTo || jobDateStr <= dateTo);
 
       return (
         matchesSearch &&
@@ -208,9 +239,21 @@ export default function ServiceCenterJobsTable({
     return rows.sort((a, b) =>
       sortDesc
         ? new Date(b.complaintDate) - new Date(a.complaintDate)
-        : new Date(a.complaintDate) - new Date(b.complaintDate)
+        : new Date(a.complaintDate) - new Date(b.complaintDate),
     );
-  }, [jobs, search, status, jobSource, callType, nature, serviceCenter, serviceEngineer, dateFrom, dateTo, sortDesc]);
+  }, [
+    jobs,
+    search,
+    status,
+    jobSource,
+    callType,
+    nature,
+    serviceCenter,
+    serviceEngineer,
+    dateFrom,
+    dateTo,
+    sortDesc,
+  ]);
 
   // If the underlying job list changes (refetch after an action, switching
   // tabs, etc.) drop any selection that no longer applies — safer than
@@ -220,18 +263,29 @@ export default function ServiceCenterJobsTable({
   }, [jobs]);
 
   const selectableRows = filtered.filter(canSelectRow);
-  const allSelected = selectableRows.length > 0 && selected.length === selectableRows.length;
+  const allSelected =
+    selectableRows.length > 0 && selected.length === selectableRows.length;
 
   function toggleAll() {
     setSelected(allSelected ? [] : selectableRows.map((j) => j._id));
   }
 
   function toggleOne(id) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   const hasActiveFilters =
-    search || status || jobSource || callType || nature || serviceCenter || serviceEngineer || dateFrom || dateTo;
+    search ||
+    status ||
+    jobSource ||
+    callType ||
+    nature ||
+    serviceCenter ||
+    serviceEngineer ||
+    dateFrom ||
+    dateTo;
 
   const [jobSourceOptions, setJobSourceOptions] = useState([]);
   const [callTypeOptions, setCallTypeOptions] = useState([]);
@@ -248,7 +302,9 @@ export default function ServiceCenterJobsTable({
         setCallTypeOptions(callType.data?.data ?? []);
         setNatureOfWorkOptions(nature.data?.data ?? []);
       })
-      .catch((err) => console.error("Failed to load job category options", err));
+      .catch((err) =>
+        console.error("Failed to load job category options", err),
+      );
   }, []);
 
   function clearFilters() {
@@ -265,11 +321,16 @@ export default function ServiceCenterJobsTable({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-navy-900">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <p className="text-sm text-slate-400">
-            <span className="font-semibold text-navy-900">{filtered.length}</span> of {jobs.length} jobs
+            <span className="font-semibold text-navy-900">
+              {filtered.length}
+            </span>{" "}
+            of {jobs.length} jobs
           </p>
           <DownloadExcelButton
             jobs={filtered}
@@ -296,7 +357,10 @@ export default function ServiceCenterJobsTable({
 
           <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             {showStatusFilter && (
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className={selectClass}>
                 <option value="">All Statuses</option>
                 {JOB_STATUS_LIST?.map((opt) => (
                   <option key={opt} value={opt}>
@@ -306,7 +370,10 @@ export default function ServiceCenterJobsTable({
               </select>
             )}
 
-            <select value={jobSource} onChange={(e) => setJobSource(e.target.value)} className={selectClass}>
+            <select
+              value={jobSource}
+              onChange={(e) => setJobSource(e.target.value)}
+              className={selectClass}>
               <option value="">All Job Sources</option>
               {jobSourceOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -315,7 +382,10 @@ export default function ServiceCenterJobsTable({
               ))}
             </select>
 
-            <select value={callType} onChange={(e) => setCallType(e.target.value)} className={selectClass}>
+            <select
+              value={callType}
+              onChange={(e) => setCallType(e.target.value)}
+              className={selectClass}>
               <option value="">All Call Types</option>
               {callTypeOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -324,7 +394,10 @@ export default function ServiceCenterJobsTable({
               ))}
             </select>
 
-            <select value={nature} onChange={(e) => setNature(e.target.value)} className={selectClass}>
+            <select
+              value={nature}
+              onChange={(e) => setNature(e.target.value)}
+              className={selectClass}>
               <option value="">All Nature of Work</option>
               {natureOfWorkOptions?.map((opt) => (
                 <option key={opt} value={opt}>
@@ -337,8 +410,7 @@ export default function ServiceCenterJobsTable({
               <select
                 value={serviceEngineer}
                 onChange={(e) => setServiceEngineer(e.target.value)}
-                className={`${selectClass} col-span-2 sm:col-span-1`}
-              >
+                className={`${selectClass} col-span-2 sm:col-span-1`}>
                 <option value="">All Service Engineers</option>
                 {serviceEngineerOptions?.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -350,7 +422,10 @@ export default function ServiceCenterJobsTable({
 
             {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
             <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
-              <CalendarRange className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.75} />
+              <CalendarRange
+                className="h-4 w-4 shrink-0 text-slate-400"
+                strokeWidth={1.75}
+              />
               <input
                 type="date"
                 value={dateFrom}
@@ -373,8 +448,7 @@ export default function ServiceCenterJobsTable({
             <button
               type="button"
               onClick={() => setSortDesc((v) => !v)}
-              className="col-span-2 flex items-center justify-center gap-1.5 text-black rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto"
-            >
+              className="col-span-2 flex items-center justify-center gap-1.5 text-black rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -383,8 +457,7 @@ export default function ServiceCenterJobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto"
-              >
+                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
                 Clear filters
               </button>
             )}
@@ -402,8 +475,7 @@ export default function ServiceCenterJobsTable({
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
-            >
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100">
               Clear
             </button>
             <button
@@ -412,8 +484,7 @@ export default function ServiceCenterJobsTable({
                 onAssignJob?.(selected);
                 setSelected([]);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110"
-            >
+              className="inline-flex items-center gap-1.5 rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110">
               <UserPlus className="h-3.5 w-3.5" />
               Assign {selected.length} to Engineer
             </button>
@@ -446,24 +517,38 @@ export default function ServiceCenterJobsTable({
                 <th className="whitespace-nowrap px-4 py-3">Model</th>
                 <th className="whitespace-nowrap px-4 py-3">Serial number</th>
                 <th className="whitespace-nowrap px-4 py-3">Warranty</th>
-                <th className="whitespace-nowrap px-4 py-3">Nature / Call Type</th>
-                <th className="whitespace-nowrap px-4 py-3">Assigned Engineer</th>
+                <th className="whitespace-nowrap px-4 py-3">
+                  Nature / Call Type
+                </th>
+                <th className="whitespace-nowrap px-4 py-3">
+                  Assigned Engineer
+                </th>
 
-                {showHoldReasonColumn && <th className="whitespace-nowrap px-4 py-3">Reason for Hold</th>}
+                {showHoldReasonColumn && (
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Reason for Hold
+                  </th>
+                )}
 
                 {showCancelReasonColumn && (
-                  <th className="whitespace-nowrap px-4 py-3">Cancellation Reason</th>
+                  <th className="whitespace-nowrap px-4 py-3">
+                    Cancellation Reason
+                  </th>
                 )}
 
                 <th className="whitespace-nowrap px-4 py-3">Status</th>
 
-                <th className="whitespace-nowrap px-4 py-3 text-right">Actions</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody>
               {filtered.map((job, idx) => (
-                <tr key={job._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                <tr
+                  key={job._id}
+                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
                   {/* Select */}
                   <td className="px-4 py-3.5">
                     <input
@@ -476,7 +561,9 @@ export default function ServiceCenterJobsTable({
                   </td>
 
                   {/* S.No. */}
-                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">{idx + 1}</td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
+                    {idx + 1}
+                  </td>
 
                   {/* Complaint Number */}
                   <td className="whitespace-nowrap px-4 py-3.5 font-medium text-navy-900">
@@ -501,7 +588,9 @@ export default function ServiceCenterJobsTable({
                   {/* Customer */}
                   <td className="whitespace-nowrap px-4 py-3.5">
                     <div className="max-w-[220px]">
-                      <p className="truncate font-medium text-navy-900" title={job.customer?.name}>
+                      <p
+                        className="truncate font-medium text-navy-900"
+                        title={job.customer?.name}>
                         {job.customer?.name || "N/A"}
                       </p>
 
@@ -509,10 +598,15 @@ export default function ServiceCenterJobsTable({
                         <a
                           href={`tel:${job.customer.mobileNumber}`}
                           className="mt-1 flex items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                          title={`Call ${job.customer.mobileNumber}`}
-                        >
-                          <Phone size={13} strokeWidth={1.75} className="shrink-0" />
-                          <span className="whitespace-nowrap">{job.customer.mobileNumber}</span>
+                          title={`Call ${job.customer.mobileNumber}`}>
+                          <Phone
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
+                          <span className="whitespace-nowrap">
+                            {job.customer.mobileNumber}
+                          </span>
                         </a>
                       )}
 
@@ -522,10 +616,15 @@ export default function ServiceCenterJobsTable({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="mt-1 flex max-w-[220px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                          title={`Open location: ${job.customer.address}`}
-                        >
-                          <MapPin size={13} strokeWidth={1.75} className="shrink-0" />
-                          <span className="truncate">{job.customer.address}</span>
+                          title={`Open location: ${job.customer.address}`}>
+                          <MapPin
+                            size={13}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
+                          <span className="truncate">
+                            {job.customer.address}
+                          </span>
                         </a>
                       )}
                     </div>
@@ -552,7 +651,10 @@ export default function ServiceCenterJobsTable({
                       {job.warrantyTo
                         ? `${Math.max(
                             0,
-                            Math.ceil((new Date(job.warrantyTo) - new Date()) / (1000 * 60 * 60 * 24))
+                            Math.ceil(
+                              (new Date(job.warrantyTo) - new Date()) /
+                                (1000 * 60 * 60 * 24),
+                            ),
                           )} days left`
                         : "No warranty"}
                     </p>
@@ -566,14 +668,20 @@ export default function ServiceCenterJobsTable({
 
                   {/* Assigned Engineer */}
                   <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                    <span className="block max-w-40 truncate" title={job.assignedServiceEngineer?.name}>
-                      {job.assignedServiceEngineer?.name ? job.assignedServiceEngineer.name : (user?.name ?? "—")}
+                    <span
+                      className="block max-w-40 truncate"
+                      title={job.assignedServiceEngineer?.name}>
+                      {job.assignedServiceEngineer?.name
+                        ? job.assignedServiceEngineer.name
+                        : (user?.name ?? "—")}
                     </span>
                   </td>
 
                   {showHoldReasonColumn && (
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                      <span className="block max-w-45 truncate" title={job.holdReason ?? ""}>
+                      <span
+                        className="block max-w-45 truncate"
+                        title={job.holdReason ?? ""}>
                         {job.holdReason ?? "—"}
                       </span>
                     </td>
@@ -581,7 +689,9 @@ export default function ServiceCenterJobsTable({
 
                   {showCancelReasonColumn && (
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
-                      <span className="block max-w-45 truncate" title={job.cancelReason ?? ""}>
+                      <span
+                        className="block max-w-45 truncate"
+                        title={job.cancelReason ?? ""}>
                         {job.cancelReason ?? "—"}
                       </span>
                     </td>
@@ -589,7 +699,10 @@ export default function ServiceCenterJobsTable({
 
                   {/* Status */}
                   <td className="whitespace-nowrap px-4 py-3.5">
-                    <StatusBadge status={job.status} tone={STATUS_TONE[job.status]} />
+                    <StatusBadge
+                      status={job.status}
+                      tone={STATUS_TONE[job.status]}
+                    />
                   </td>
 
                   {/* Actions */}
