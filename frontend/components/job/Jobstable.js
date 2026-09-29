@@ -17,6 +17,7 @@ import {
   GalleryHorizontal,
 } from "lucide-react";
 import { getJobCategoryOptions } from "@/actions/company";
+import DownloadExcelButton from "./DownloadExcelButton";
 
 // Statuses a job can still be assigned / cancelled from, used by the "all" variant
 // to decide per-row which actions make sense instead of hiding them for the whole table.
@@ -359,10 +360,19 @@ export default function JobsTable({
             <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
           )}
         </div>
-        <p className="text-sm text-slate-400">
-          <span className="font-semibold text-navy-900">{filtered.length}</span>{" "}
-          of {jobs.length} jobs
-        </p>
+
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-slate-400">
+            <span className="font-semibold text-navy-900">
+              {filtered.length}
+            </span>{" "}
+            of {jobs.length} jobs
+          </p>
+          <DownloadExcelButton
+            jobs={filtered}
+            filename={(title || "jobs").toLowerCase().replace(/\s+/g, "-")}
+          />
+        </div>
       </div>
 
       {/* Filter bar */}

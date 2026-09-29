@@ -15,6 +15,7 @@ import {
 import { STATUS_TONE, JOB_STATUS_LIST } from "../job/Constants";
 import StatusBadge from "../job/Statusbadge";
 import { getJobCategoryOptions } from "@/actions/company";
+import DownloadExcelButton from "../job/DownloadExcelButton";
 
 const TIME_ZONE = "Asia/Kolkata";
 
@@ -189,10 +190,18 @@ export default function ServiceEngineerJobsTable({
           )}
         </div>
 
-        <p className="text-sm text-slate-400">
-          <span className="font-semibold text-navy-900">{filtered.length}</span>{" "}
-          of {jobs.length} jobs
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-slate-400">
+            <span className="font-semibold text-navy-900">
+              {filtered.length}
+            </span>{" "}
+            of {jobs.length} jobs
+          </p>
+          <DownloadExcelButton
+            jobs={filtered}
+            filename={(title || "jobs").toLowerCase().replace(/\s+/g, "-")}
+          />
+        </div>
       </div>
 
       {/* Filter bar */}
