@@ -11,6 +11,7 @@ function StatCard({ label, value, icon: Icon, tone }) {
     red: "bg-red-50 text-red-500 ring-red-200",
     navy: "bg-navy-900/5 text-navy-900 ring-navy-900/10",
     amber: "bg-amber-50 text-amber-500 ring-amber-200",
+    orange: "bg-orange-50 text-orange-500 ring-orange-200",
   };
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 transition hover:shadow-md hover:shadow-slate-200/60">
@@ -139,8 +140,16 @@ export default function CompanyDashboardPage() {
     {
       label: "Jobs on Hold",
       value: stats.jobs.onHold.toLocaleString(),
-      tone: "red",
+      tone: "orange",
       icon: jobIcon("M6 4h4v16H6zM14 4h4v16h-4z"),
+    },
+    {
+      label: "Cancel Jobs",
+      value: stats.jobs.cancel.toLocaleString(),
+      tone: "red",
+      icon: jobIcon(
+        "M12 2a10 10 0 100 20 10 10 0 000-20z M4.93 4.93l14.14 14.14",
+      ),
     },
     {
       label: "Completed Jobs",

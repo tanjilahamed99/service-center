@@ -1324,6 +1324,7 @@ exports.getDashboardStats = async (req, res) => {
       "Service Center Assigned",
       "Service Engineer Assigned",
       "Hold",
+      "Cancelled",
     ];
 
     const [
@@ -1332,6 +1333,7 @@ exports.getDashboardStats = async (req, res) => {
       pendingAtServiceCenter,
       pendingAtServiceEngineer,
       jobsOnHold,
+      cancelJobs,
       completedJobs,
       agingOverOneDay,
       agingOverThreeDays,
@@ -1346,6 +1348,7 @@ exports.getDashboardStats = async (req, res) => {
       Job.countDocuments({ company, status: "Service Center Assigned" }),
       Job.countDocuments({ company, status: "Service Engineer Assigned" }),
       Job.countDocuments({ company, status: "Hold" }),
+      Job.countDocuments({ company, status: "Cancelled" }),
       Job.countDocuments({ company, status: "Completed" }),
       Job.countDocuments({
         company,
@@ -1377,6 +1380,7 @@ exports.getDashboardStats = async (req, res) => {
           pendingAtServiceCenter,
           pendingAtServiceEngineer,
           onHold: jobsOnHold,
+          cancel: cancelJobs,
           completed: completedJobs,
         },
         aging: {
