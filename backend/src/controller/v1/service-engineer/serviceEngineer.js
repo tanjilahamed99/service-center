@@ -208,7 +208,7 @@ async function generateAndSendServiceReport(jobId) {
       throw new Error(`Job ${jobId} not found`);
     }
 
-    const complainid = "SL" + populatedJob?._id?.slice(-5);
+    const complainid = "SL" + populatedJob?._id?.toString().slice(-5);
 
     const pdfBuffer = await generateServiceReportPDF(populatedJob, {
       companyAddress: populatedJob.company?.address || "",

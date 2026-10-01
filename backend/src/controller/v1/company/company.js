@@ -144,7 +144,7 @@ exports.createJob = async (req, res) => {
 
     const serviceCenter = populatedJob?.assignedServiceCenter;
 
-    const complainid = "SL" + job?._id?.slice(-5);
+    const complainid = "SL" + job?._id?.toString().slice(-5);
 
     // service-center message
     await sendWhatsAppTemplate({
