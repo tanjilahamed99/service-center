@@ -1,35 +1,92 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ListChecks,
   Wrench,
   PauseCircle,
   CheckCircle2,
+  XCircle,
   RotateCcw,
+  Clock,
 } from "lucide-react";
 import { getDashboardStats } from "@/actions/service-engineer";
 
+// ---------------------------------------------------------------------------
+// Tone styles
+// ---------------------------------------------------------------------------
 const TONE_STYLES = {
   emerald: "bg-emerald-50 text-emerald-600 ring-emerald-200",
   red: "bg-red-50 text-red-500 ring-red-200",
   navy: "bg-navy-900/5 text-navy-900 ring-navy-900/10",
   amber: "bg-amber-50 text-amber-500 ring-amber-200",
+  electric: "bg-electric-500/10 text-electric-600 ring-electric-500/30",
+  violet: "bg-violet-50 text-violet-600 ring-violet-200",
 };
 
-function StatCard({ label, value, icon: Icon, tone }) {
+// ---------------------------------------------------------------------------
+// Card definitions — only engineer-relevant statuses
+// ---------------------------------------------------------------------------
+const STATUS_CARDS = [
+  {
+    key: "totalJobs",
+    label: "Total Jobs",
+    icon: ListChecks,
+    tone: "navy",
+  },
+  {
+    key: "pendingJobs",
+    label: "Pending",
+    icon: Wrench,
+    tone: "amber",
+  },
+  {
+    key: "jobsOnHold",
+    label: "On Hold",
+    icon: PauseCircle,
+    tone: "amber",
+  },
+  {
+    key: "completedJobs",
+    label: "Completed",
+    icon: CheckCircle2,
+    tone: "emerald",
+  },
+  {
+    key: "cancelledJobs",
+    label: "Cancelled",
+    icon: XCircle,
+    tone: "red",
+  },
+  {
+    key: "openJobs",
+    label: "Open (In Progress)",
+    icon: Clock,
+    tone: "violet",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+function StatCard({ label, value, icon: Icon, tone, href }) {
+  const Wrapper = href ? Link : "div";
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+    <Wrapper
+      href={href}
+      className="group block rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 transition hover:border-electric-400/60 hover:shadow-md">
       <span
         className={`flex h-10 w-10 items-center justify-center rounded-lg ring-1 ${TONE_STYLES[tone]}`}>
         <Icon className="h-5 w-5" />
       </span>
       <p className="mt-4 text-2xl font-semibold tracking-tight text-navy-900">
-        {value}
+        {value ?? 0}
       </p>
-      <p className="mt-1 text-sm text-slate-500">{label}</p>
-    </div>
+      <p className="mt-1 text-sm text-slate-500 group-hover:text-slate-700">
+        {label}
+      </p>
+    </Wrapper>
   );
 }
 
@@ -51,7 +108,7 @@ function AgingCard({ label, value, tone }) {
         <span className={`h-2 w-2 rounded-full ${dot}`} />
         <span className="text-sm text-slate-600">{label}</span>
       </div>
-      <span className="text-lg font-semibold text-navy-900">{value}</span>
+      <span className="text-lg font-semibold text-navy-900">{value ?? 0}</span>
     </div>
   );
 }
@@ -76,7 +133,10 @@ function SectionHeading({ title, subtitle }) {
   );
 }
 
-export default function ServiceCenterDashboardPage() {
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+export default function ServiceEngineerDashboardPage() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -85,8 +145,8 @@ export default function ServiceCenterDashboardPage() {
     setIsLoading(true);
     setError("");
     try {
-      const { data } = await getDashboardStats();
-      setStats(data.data);
+      const res = await getDashboardStats();
+      setStats(res?.data?.data ?? null);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -109,35 +169,6 @@ export default function ServiceCenterDashboardPage() {
       ]
     : [];
 
-  const jobStats = stats
-    ? [
-        {
-          label: "Total Jobs",
-          value: stats.totalJobs,
-          icon: ListChecks,
-          tone: "navy",
-        },
-        {
-          label: "Pending at Service Center",
-          value: stats.pendingJobs,
-          icon: Wrench,
-          tone: "amber",
-        },
-        {
-          label: "Jobs on Hold",
-          value: stats.jobsOnHold,
-          icon: PauseCircle,
-          tone: "red",
-        },
-        {
-          label: "Completed Jobs",
-          value: stats.completedJobs,
-          icon: CheckCircle2,
-          tone: "emerald",
-        },
-      ]
-    : [];
-
   return (
     <div className="space-y-8">
       {/* Welcome + quick action */}
@@ -150,7 +181,7 @@ export default function ServiceCenterDashboardPage() {
             Welcome back
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Here&apos;s what&apos;s waiting on your team today.
+            Here&apos;s what&apos;s waiting on you today.
           </p>
         </div>
         <Link
@@ -160,7 +191,7 @@ export default function ServiceCenterDashboardPage() {
         </Link>
       </div>
 
-      {/* Error state */}
+      {/* Error */}
       {error && (
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
@@ -178,7 +209,7 @@ export default function ServiceCenterDashboardPage() {
       <section>
         <SectionHeading
           title="Aging"
-          subtitle="Jobs still pending, by how long they've waited"
+          subtitle="Jobs assigned to you, by how long they've been waiting"
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {isLoading
@@ -191,15 +222,32 @@ export default function ServiceCenterDashboardPage() {
         </div>
       </section>
 
-      {/* Job status */}
+      {/* Jobs by status */}
       <section>
-        <SectionHeading title="Jobs" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionHeading
+          title="Jobs by Status"
+          subtitle="Every status a job can be in while it's assigned to you"
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => (
+            ? Array.from({ length: STATUS_CARDS.length }).map((_, i) => (
                 <StatCardSkeleton key={i} />
               ))
-            : jobStats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+            : STATUS_CARDS.map((card) => (
+                <StatCard
+                  key={card.key}
+                  label={card.label}
+                  value={
+                    stats?.[card.key] ??
+                    (stats?.byStatus && card.key === "pendingJobs"
+                      ? stats.byStatus["Service Engineer Assigned"]
+                      : 0)
+                  }
+                  icon={card.icon}
+                  tone={card.tone}
+                  href={card.href}
+                />
+              ))}
         </div>
       </section>
     </div>

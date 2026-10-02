@@ -16,6 +16,7 @@ const sendEmail = require("../../../utils/sendEmail");
 const { sendWhatsAppTemplate } = require("../../../utils/msg91");
 const axios = require("axios");
 const { formatIndiaDateTime } = require("../../../helpers/formatIndiaDateTime");
+const { default: mongoose } = require("mongoose");
 
 // Base path assumed: /api/companies  (adjust if mounted elsewhere)
 // req.user is assumed to be set by your auth middleware, with req.user._id
@@ -242,56 +243,84 @@ exports.createJob = async (req, res) => {
 };
 
 // GET /api/companies/getJobs
-// query: { search, status, callType, natureOfWork, serviceCenter, serviceEngineer,
-//          sortDesc, page, limit }
+// query: search, status, jobSource, callType, natureOfWork,
+//        serviceCenter, serviceEngineer, dateFrom, dateTo,
+//        sort, page, limit
 exports.getJobs = async (req, res) => {
   try {
     const company = req.user._id;
+
     const {
       search,
       status,
+      jobSource,
       callType,
       natureOfWork,
       serviceCenter,
       serviceEngineer,
-      sortDesc,
+      dateFrom,
+      dateTo,
+      sort = "desc",
       page = 1,
       limit = 20,
     } = req.query;
 
+    // ---- Base scope ------------------------------------------------------
     const filter = { company };
+
+    // ---- Status filter ---------------------------------------------------
     if (status) filter.status = status;
+
+    // ---- Exact-match filters ---------------------------------------------
+    if (jobSource) filter.jobSource = jobSource;
     if (callType) filter.callType = callType;
     if (natureOfWork) filter.natureOfWork = natureOfWork;
     if (serviceCenter) filter.assignedServiceCenter = serviceCenter;
     if (serviceEngineer) filter.assignedServiceEngineer = serviceEngineer;
 
-    if (search) {
+    // ---- Date range on complaintDate (inclusive) -------------------------
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom)
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo)
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    // ---- Free-text search across complaintNumber / customer --------------
+    if (search && search.trim()) {
+      const term = search.trim();
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+
       const matchingCustomers = await Customer.find({
         company,
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { mobileNumber: { $regex: search, $options: "i" } },
-        ],
-      }).select("_id");
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
 
       filter.$or = [
-        { complaintNumber: { $regex: search, $options: "i" } },
+        { complaintNumber: rx },
         { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
       ];
     }
 
+    // ---- Pagination ------------------------------------------------------
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const limitNum = Math.max(parseInt(limit, 10) || 20, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
 
     const [jobs, total] = await Promise.all([
       Job.find(filter)
         .populate("customer", "name mobileNumber address")
         .populate("assignedServiceCenter", "name")
         .populate("assignedServiceEngineer", "name")
-        .sort({ createdAt: sortDesc === "false" ? 1 : -1 })
+        .sort({ complaintDate: sortDir, createdAt: sortDir })
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Job.countDocuments(filter),
     ]);
 
@@ -302,7 +331,7 @@ exports.getJobs = async (req, res) => {
         page: pageNum,
         limit: limitNum,
         total,
-        pages: Math.ceil(total / limitNum),
+        pages: Math.max(Math.ceil(total / limitNum), 1),
       },
     });
   } catch (error) {
@@ -314,7 +343,6 @@ exports.getJobs = async (req, res) => {
     });
   }
 };
-
 // GET /api/companies/getJobById/:id
 exports.getJobById = async (req, res) => {
   try {
@@ -1312,81 +1340,101 @@ exports.changeMyPassword = async (req, res) => {
 // GET /api/companies/getDashboardStats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const company = req.user._id;
+    const companyId = new mongoose.Types.ObjectId(req.user._id);
     const now = new Date();
-    const oneDayAgo = new Date(now - 1 * 24 * 60 * 60 * 1000);
-    const threeDaysAgo = new Date(now - 3 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const DAY_MS = 24 * 60 * 60 * 1000;
 
-    // "Pending" for aging purposes = not yet Completed or Cancelled.
-    const OPEN_STATUSES = [
+    // Every status a job can be in at company level.
+    const COMPANY_STATUSES = [
       "Registered",
       "Service Center Assigned",
       "Service Engineer Assigned",
+      "Pending",
       "Hold",
+      "Completed",
       "Cancelled",
     ];
 
+    // Open = anything not terminal. Cancelled is terminal.
+    const OPEN_STATUSES = COMPANY_STATUSES.filter(
+      (s) => s !== "Completed" && s !== "Cancelled",
+    );
+
     const [
-      totalJobs,
-      registeredJobs,
-      pendingAtServiceCenter,
-      pendingAtServiceEngineer,
-      jobsOnHold,
-      cancelJobs,
-      completedJobs,
-      agingOverOneDay,
-      agingOverThreeDays,
-      agingOverSevenDays,
+      result,
       totalServiceCenters,
       activeServiceCenters,
       totalServiceEngineers,
       activeServiceEngineers,
     ] = await Promise.all([
-      Job.countDocuments({ company }),
-      Job.countDocuments({ company, status: "Registered" }),
-      Job.countDocuments({ company, status: "Service Center Assigned" }),
-      Job.countDocuments({ company, status: "Service Engineer Assigned" }),
-      Job.countDocuments({ company, status: "Hold" }),
-      Job.countDocuments({ company, status: "Cancelled" }),
-      Job.countDocuments({ company, status: "Completed" }),
-      Job.countDocuments({
-        company,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: oneDayAgo },
-      }),
-      Job.countDocuments({
-        company,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: threeDaysAgo },
-      }),
-      Job.countDocuments({
-        company,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: sevenDaysAgo },
-      }),
-      ServiceCenter.countDocuments({ company }),
-      ServiceCenter.countDocuments({ company, status: "Active" }),
-      ServiceEngineer.countDocuments({ company }),
-      ServiceEngineer.countDocuments({ company, status: "Active" }),
+      Job.aggregate([
+        { $match: { company: companyId } },
+        {
+          $facet: {
+            byStatus: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+            total: [{ $count: "count" }],
+            aging: [
+              { $match: { status: { $in: OPEN_STATUSES } } },
+              {
+                $project: {
+                  ageMs: { $subtract: [now, "$complaintDate"] },
+                },
+              },
+              {
+                $project: {
+                  over1: { $gte: ["$ageMs", 1 * DAY_MS] },
+                  over3: { $gte: ["$ageMs", 3 * DAY_MS] },
+                  over7: { $gte: ["$ageMs", 7 * DAY_MS] },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  over1: { $sum: { $cond: ["$over1", 1, 0] } },
+                  over3: { $sum: { $cond: ["$over3", 1, 0] } },
+                  over7: { $sum: { $cond: ["$over7", 1, 0] } },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+      ServiceCenter.countDocuments({ company: companyId }),
+      ServiceCenter.countDocuments({ company: companyId, status: "Active" }),
+      ServiceEngineer.countDocuments({ company: companyId }),
+      ServiceEngineer.countDocuments({ company: companyId, status: "Active" }),
     ]);
+
+    const [agg] = result;
+
+    const byStatus = {};
+    for (const s of COMPANY_STATUSES) byStatus[s] = 0;
+    for (const row of agg.byStatus) {
+      if (row._id != null) byStatus[row._id] = row.count;
+    }
+
+    const totalJobs = agg.total[0]?.count ?? 0;
+    const aging = agg.aging[0] ?? { over1: 0, over3: 0, over7: 0 };
 
     return res.status(200).json({
       success: true,
       data: {
         jobs: {
           total: totalJobs,
-          registered: registeredJobs,
-          pendingAtServiceCenter,
-          pendingAtServiceEngineer,
-          onHold: jobsOnHold,
-          cancel: cancelJobs,
-          completed: completedJobs,
+          registered: byStatus["Registered"] ?? 0,
+          pendingAtServiceCenter: byStatus["Service Center Assigned"] ?? 0,
+          pendingAtServiceEngineer: byStatus["Service Engineer Assigned"] ?? 0,
+          pending: byStatus["Pending"] ?? 0,
+          onHold: byStatus["Hold"] ?? 0,
+          cancel: byStatus["Cancelled"] ?? 0,
+          completed: byStatus["Completed"] ?? 0,
+          open: OPEN_STATUSES.reduce((sum, s) => sum + (byStatus[s] ?? 0), 0),
+          byStatus,
         },
         aging: {
-          overOneDay: agingOverOneDay,
-          overThreeDays: agingOverThreeDays,
-          overSevenDays: agingOverSevenDays,
+          overOneDay: aging.over1,
+          overThreeDays: aging.over3,
+          overSevenDays: aging.over7,
         },
         serviceCenters: {
           total: totalServiceCenters,

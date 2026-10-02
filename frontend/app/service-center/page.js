@@ -1,26 +1,102 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ListChecks, Wrench, PauseCircle, CheckCircle2, RotateCcw } from "lucide-react";
+import {
+  ListChecks,
+  Wrench,
+  PauseCircle,
+  CheckCircle2,
+  RotateCcw,
+  UserCheck,
+  XCircle,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { getDashboardStats } from "@/actions/service-center";
+import { JOB_STATUS } from "@/components/job/Constants";
 
+// ---------------------------------------------------------------------------
+// Tone styles
+// ---------------------------------------------------------------------------
 const TONE_STYLES = {
   emerald: "bg-emerald-50 text-emerald-600 ring-emerald-200",
   red: "bg-red-50 text-red-500 ring-red-200",
   navy: "bg-navy-900/5 text-navy-900 ring-navy-900/10",
   amber: "bg-amber-50 text-amber-500 ring-amber-200",
+  electric: "bg-electric-500/10 text-electric-600 ring-electric-500/30",
+  slate: "bg-slate-100 text-slate-600 ring-slate-200",
+  sky: "bg-sky-50 text-sky-600 ring-sky-200",
+  violet: "bg-violet-50 text-violet-600 ring-violet-200",
 };
 
-function StatCard({ label, value, icon: Icon, tone }) {
+// ---------------------------------------------------------------------------
+// Card definitions — mapping each status to a label / icon / tone / route
+// ---------------------------------------------------------------------------
+const STATUS_CARDS = [
+  {
+    key: "totalJobs",
+    label: "Total Jobs",
+    icon: ListChecks,
+    tone: "navy",
+  },
+  {
+    key: "pendingAtServiceCenter",
+    label: "Pending at Service Center",
+    icon: Wrench,
+    tone: "amber",
+    statusKey: JOB_STATUS.SERVICE_CENTER_ASSIGNED,
+  },
+  {
+    key: "jobsWithEngineer",
+    label: "Engineer Assigned",
+    icon: UserCheck,
+    tone: "electric",
+    statusKey: JOB_STATUS.PENDING,
+  },
+  {
+    key: "jobsOnHold",
+    label: "On Hold",
+    icon: PauseCircle,
+    tone: "amber",
+    statusKey: JOB_STATUS.HOLD,
+  },
+  {
+    key: "completedJobs",
+    label: "Completed",
+    icon: CheckCircle2,
+    tone: "emerald",
+    statusKey: JOB_STATUS.COMPLETED,
+  },
+  {
+    key: "cancelledJobs",
+    label: "Cancelled",
+    icon: XCircle,
+    tone: "red",
+    statusKey: JOB_STATUS.CANCELLED,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+function StatCard({ label, value, icon: Icon, tone, href }) {
+  const Wrapper = href ? Link : "div";
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
-      <span className={`flex h-10 w-10 items-center justify-center rounded-lg ring-1 ${TONE_STYLES[tone]}`}>
+    <Wrapper
+      href={href}
+      className="group block rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50 transition hover:border-electric-400/60 hover:shadow-md">
+      <span
+        className={`flex h-10 w-10 items-center justify-center rounded-lg ring-1 ${TONE_STYLES[tone]}`}>
         <Icon className="h-5 w-5" />
       </span>
-      <p className="mt-4 text-2xl font-semibold tracking-tight text-navy-900">{value}</p>
-      <p className="mt-1 text-sm text-slate-500">{label}</p>
-    </div>
+      <p className="mt-4 text-2xl font-semibold tracking-tight text-navy-900">
+        {value ?? 0}
+      </p>
+      <p className="mt-1 text-sm text-slate-500 group-hover:text-slate-700">
+        {label}
+      </p>
+    </Wrapper>
   );
 }
 
@@ -42,7 +118,7 @@ function AgingCard({ label, value, tone }) {
         <span className={`h-2 w-2 rounded-full ${dot}`} />
         <span className="text-sm text-slate-600">{label}</span>
       </div>
-      <span className="text-lg font-semibold text-navy-900">{value}</span>
+      <span className="text-lg font-semibold text-navy-900">{value ?? 0}</span>
     </div>
   );
 }
@@ -59,12 +135,17 @@ function AgingCardSkeleton() {
 function SectionHeading({ title, subtitle }) {
   return (
     <div className="mb-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </h2>
       {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 export default function ServiceCenterDashboardPage() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,11 +155,12 @@ export default function ServiceCenterDashboardPage() {
     setIsLoading(true);
     setError("");
     try {
-      const { data } = await getDashboardStats();
-      setStats(data.data);
+      const res = await getDashboardStats();
+      setStats(res?.data?.data ?? null);
     } catch (err) {
       setError(
-        err.response?.data?.message || "Couldn't load dashboard stats. Please try again."
+        err.response?.data?.message ||
+          "Couldn't load dashboard stats. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -94,20 +176,6 @@ export default function ServiceCenterDashboardPage() {
         { label: "Pending > 1 Day", value: stats.pending1Day, tone: "amber" },
         { label: "Pending > 3 Days", value: stats.pending3Days, tone: "amber" },
         { label: "Pending > 7 Days", value: stats.pending7Days, tone: "red" },
-      ]
-    : [];
-
-  const jobStats = stats
-    ? [
-        { label: "Total Jobs", value: stats.totalJobs, icon: ListChecks, tone: "navy" },
-        {
-          label: "Pending at Service Center",
-          value: stats.pendingAtServiceCenter,
-          icon: Wrench,
-          tone: "amber",
-        },
-        { label: "Jobs on Hold", value: stats.jobsOnHold, icon: PauseCircle, tone: "red" },
-        { label: "Completed Jobs", value: stats.completedJobs, icon: CheckCircle2, tone: "emerald" },
       ]
     : [];
 
@@ -128,21 +196,19 @@ export default function ServiceCenterDashboardPage() {
         </div>
         <Link
           href="/service-center/jobs"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-electric-500 to-electric-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-electric-500/30 transition hover:brightness-110"
-        >
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-electric-500 to-electric-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-electric-500/30 transition hover:brightness-110">
           View Jobs
         </Link>
       </div>
 
-      {/* Error state */}
+      {/* Error */}
       {error && (
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
           <button
             type="button"
             onClick={fetchStats}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700"
-          >
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700">
             <RotateCcw className="h-3.5 w-3.5" />
             Retry
           </button>
@@ -151,21 +217,47 @@ export default function ServiceCenterDashboardPage() {
 
       {/* Aging */}
       <section>
-        <SectionHeading title="Aging" subtitle="Jobs still pending, by how long they've waited" />
+        <SectionHeading
+          title="Aging"
+          subtitle="Open jobs by how long they've been waiting"
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {isLoading
-            ? Array.from({ length: 3 }).map((_, i) => <AgingCardSkeleton key={i} />)
-            : agingStats.map((stat) => <AgingCard key={stat.label} {...stat} />)}
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <AgingCardSkeleton key={i} />
+              ))
+            : agingStats.map((stat) => (
+                <AgingCard key={stat.label} {...stat} />
+              ))}
         </div>
       </section>
 
-      {/* Job status */}
+      {/* Jobs by status */}
       <section>
-        <SectionHeading title="Jobs" />
+        <SectionHeading
+          title="Jobs by Status"
+          subtitle="Every status that belongs to your service center"
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
-            : jobStats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+            ? Array.from({ length: STATUS_CARDS.length }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+              ))
+            : STATUS_CARDS.map((card) => (
+                <StatCard
+                  key={card.key}
+                  label={card.label}
+                  value={
+                    // Prefer the top-level rollup, fall back to byStatus map
+                    stats?.[card.key] ??
+                    (card.statusKey && stats?.byStatus?.[card.statusKey]) ??
+                    0
+                  }
+                  icon={card.icon}
+                  tone={card.tone}
+                  href={card.href}
+                />
+              ))}
         </div>
       </section>
     </div>

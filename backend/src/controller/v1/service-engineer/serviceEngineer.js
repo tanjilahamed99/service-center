@@ -8,63 +8,92 @@ const generateServiceReportPDF = require("../../../utils/generateServiceReport")
 const { sendWhatsAppTemplate } = require("../../../utils/msg91");
 const fs = require("fs");
 const path = require("path");
+const { default: mongoose } = require("mongoose");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// GET /service-engineer/jobs
+// query: status, search, jobSource, callType, natureOfWork,
+//        dateFrom, dateTo, sort, page, limit
 exports.serviceEngineerJobs = async (req, res) => {
   try {
-    const serviceEngineer = req.user._id;
+    const serviceEngineerId = req.user._id;
+
     const {
-      search,
       status,
+      search,
+      jobSource,
       callType,
       natureOfWork,
-      sortDesc,
+      dateFrom,
+      dateTo,
+      sort = "desc",
       page = 1,
       limit = 20,
     } = req.query;
 
-    const engineer = await ServiceEngineer.findById(serviceEngineer);
-
+    const engineer = await ServiceEngineer.findById(serviceEngineerId);
     if (!engineer) {
-      return res.status(401).send({
-        message: "engineer not found",
+      return res.status(401).json({
+        success: false,
+        message: "Engineer not found",
       });
     }
 
-    const filter = {
-      assignedServiceEngineer: req.user._id,
-    };
+    // ---- Base scope: jobs assigned to this engineer --------------------
+    const filter = { assignedServiceEngineer: serviceEngineerId };
+
+    // ---- Status filter --------------------------------------------------
     if (status) filter.status = status;
+
+    // ---- Exact-match filters --------------------------------------------
+    if (jobSource) filter.jobSource = jobSource;
     if (callType) filter.callType = callType;
     if (natureOfWork) filter.natureOfWork = natureOfWork;
 
-    if (search) {
+    // ---- Date range on complaintDate (inclusive) ------------------------
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom)
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo)
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    // ---- Free-text search ----------------------------------------------
+    if (search && search.trim()) {
+      const term = search.trim();
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+
       const matchingCustomers = await Customer.find({
-        company: engineer.company, // was `company`, undefined — fixed
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { mobileNumber: { $regex: search, $options: "i" } },
-        ],
-      }).select("_id");
+        company: engineer.company,
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
 
       filter.$or = [
-        { complaintNumber: { $regex: search, $options: "i" } },
+        { complaintNumber: rx },
         { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
       ];
     }
 
+    // ---- Pagination ----------------------------------------------------
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const limitNum = Math.max(parseInt(limit, 10) || 20, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
 
     const [jobs, total] = await Promise.all([
       Job.find(filter)
         .populate("customer", "name mobileNumber address")
         .populate("assignedServiceCenter", "name")
         .populate("assignedServiceEngineer", "name")
-        .sort({ createdAt: sortDesc === "false" ? 1 : -1 })
+        .sort({ complaintDate: sortDir, createdAt: sortDir })
         .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .limit(limitNum)
+        .lean(),
       Job.countDocuments(filter),
     ]);
 
@@ -75,11 +104,11 @@ exports.serviceEngineerJobs = async (req, res) => {
         page: pageNum,
         limit: limitNum,
         total,
-        pages: Math.ceil(total / limitNum),
+        pages: Math.max(Math.ceil(total / limitNum), 1),
       },
     });
   } catch (error) {
-    console.error("getJobs error:", error);
+    console.error("serviceEngineerJobs error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch jobs",
@@ -87,7 +116,6 @@ exports.serviceEngineerJobs = async (req, res) => {
     });
   }
 };
-
 // GET /api/service-engineer/getJobById/:id
 exports.getServiceEngineerJobById = async (req, res) => {
   try {
@@ -606,107 +634,116 @@ exports.changeMyPassword = async (req, res) => {
   }
 };
 
+// GET /service-engineer/dashboard-stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const serviceEngineer = req.user._id;
+    const serviceEngineerId = new mongoose.Types.ObjectId(req.user._id);
 
-    const myData = await ServiceEngineer.findById(serviceEngineer);
-
-    if (!myData) {
+    const engineer = await ServiceEngineer.findById(serviceEngineerId)
+      .select("_id company serviceCenter")
+      .lean();
+    if (!engineer) {
       return res.status(404).json({
         success: false,
-        message:
-          "Service Engineer not found or not associated with a service center",
+        message: "Service Engineer not found",
       });
     }
 
     const now = new Date();
+    const DAY_MS = 24 * 60 * 60 * 1000;
 
-    const [
-      pending1Day,
-      pending3Days,
-      pending7Days,
-      totalJobs,
-      pendingJobs,
-      jobsOnHold,
-      completedJobs,
-      cancelledJobs,
-    ] = await Promise.all([
-      // Pending for more than 1 day
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Service Engineer Assigned",
-        complaintDate: {
-          $lte: new Date(now - 1 * DAY_MS),
+    // ---- Only the statuses that apply to a service engineer -----------
+    // Nothing about "Registered" or "Service Center Assigned" here —
+    // a job only reaches an engineer after those stages.
+    const ENGINEER_STATUSES = [
+      "Service Engineer Assigned",
+      "Hold",
+      "Completed",
+      "Cancelled",
+    ];
+
+    // "Open" for aging = everything except Completed / Cancelled
+    const OPEN_STATUSES = ["Service Engineer Assigned", "Hold"];
+
+    const [result] = await Job.aggregate([
+      { $match: { assignedServiceEngineer: serviceEngineerId } },
+      {
+        $facet: {
+          // 1) Count per status
+          byStatus: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+
+          // 2) Total jobs
+          total: [{ $count: "count" }],
+
+          // 3) Aging — only over open jobs
+          aging: [
+            { $match: { status: { $in: OPEN_STATUSES } } },
+            {
+              $project: {
+                ageMs: { $subtract: [now, "$complaintDate"] },
+              },
+            },
+            {
+              $project: {
+                over1: { $gte: ["$ageMs", 1 * DAY_MS] },
+                over3: { $gte: ["$ageMs", 3 * DAY_MS] },
+                over7: { $gte: ["$ageMs", 7 * DAY_MS] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                over1: { $sum: { $cond: ["$over1", 1, 0] } },
+                over3: { $sum: { $cond: ["$over3", 1, 0] } },
+                over7: { $sum: { $cond: ["$over7", 1, 0] } },
+              },
+            },
+          ],
         },
-      }),
-
-      // Pending for more than 3 days
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Service Engineer Assigned",
-        complaintDate: {
-          $lte: new Date(now - 3 * DAY_MS),
-        },
-      }),
-
-      // Pending for more than 7 days
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Service Engineer Assigned",
-        complaintDate: {
-          $lte: new Date(now - 7 * DAY_MS),
-        },
-      }),
-
-      // All jobs assigned to engineer
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-      }),
-
-      // Pending
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Service Engineer Assigned",
-      }),
-
-      // Hold
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Hold",
-      }),
-
-      // Completed
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Completed",
-      }),
-
-      // Cancelled
-      Job.countDocuments({
-        assignedServiceEngineer: serviceEngineer,
-        status: "Cancelled",
-      }),
+      },
     ]);
+
+    // Always emit every engineer status, even at 0.
+    const byStatus = {};
+    for (const s of ENGINEER_STATUSES) byStatus[s] = 0;
+    for (const row of result.byStatus) {
+      if (row._id != null) byStatus[row._id] = row.count;
+    }
+
+    const totalJobs = result.total[0]?.count ?? 0;
+    const aging = result.aging[0] ?? { over1: 0, over3: 0, over7: 0 };
+
+    const pendingJobs = byStatus["Service Engineer Assigned"] ?? 0;
+    const jobsOnHold = byStatus["Hold"] ?? 0;
+    const completedJobs = byStatus["Completed"] ?? 0;
+    const cancelledJobs = byStatus["Cancelled"] ?? 0;
+
+    const openJobs = pendingJobs + jobsOnHold;
 
     return res.status(200).json({
       success: true,
       data: {
-        pending1Day,
-        pending3Days,
-        pending7Days,
+        // Aging
+        pending1Day: aging.over1,
+        pending3Days: aging.over3,
+        pending7Days: aging.over7,
 
+        // Totals
         totalJobs,
+        openJobs,
 
+        // Rollups (only the ones that make sense for an engineer)
         pendingJobs,
         jobsOnHold,
         completedJobs,
         cancelledJobs,
+
+        // Full breakdown
+        byStatus,
       },
     });
   } catch (error) {
     console.error("getDashboardStats error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to fetch dashboard stats",
@@ -714,7 +751,6 @@ exports.getDashboardStats = async (req, res) => {
     });
   }
 };
-
 exports.getMySparePartStock = async (req, res) => {
   try {
     const engineer = await ServiceEngineer.findById(req.user._id);
@@ -747,19 +783,45 @@ exports.getMySparePartStock = async (req, res) => {
   }
 };
 
+// GET /service-engineer/my-jobs
+// query: status (pending|completed|hold|cancelled|all),
+//        search, jobSource, callType, natureOfWork,
+//        dateFrom, dateTo, sort, page, limit
 exports.myJobs = async (req, res) => {
   try {
-    const serviceEngineer = req.user._id;
-    const { status } = req.query;
+    const serviceEngineerId = req.user._id;
 
-    const filter = {
-      assignedServiceEngineer: serviceEngineer,
-    };
+    const {
+      status,
+      search,
+      jobSource,
+      callType,
+      natureOfWork,
+      dateFrom,
+      dateTo,
+      sort = "desc",
+      page = 1,
+      limit = 20,
+    } = req.query;
 
-    // Map frontend/dashboard status -> actual Job status
-    switch (status?.toLowerCase()) {
+    const engineer = await ServiceEngineer.findById(serviceEngineerId);
+    if (!engineer) {
+      return res.status(401).json({
+        success: false,
+        message: "Engineer not found",
+      });
+    }
+
+    // ---- Base scope -----------------------------------------------------
+    const filter = { assignedServiceEngineer: serviceEngineerId };
+
+    // ---- Status tab mapping ---------------------------------------------
+    // "pending" = all open jobs for the engineer (not Completed / Cancelled)
+    switch ((status ?? "").toLowerCase()) {
       case "pending":
-        filter.status = "Service Engineer Assigned";
+        filter.status = {
+          $nin: ["Completed", "Cancelled"],
+        };
         break;
 
       case "hold":
@@ -774,26 +836,76 @@ exports.myJobs = async (req, res) => {
         filter.status = "Cancelled";
         break;
 
+      case "all":
+      case "":
       default:
-        // No status = return all jobs assigned to this engineer
-        filter.status = {
-          $in: ["Service Engineer Assigned", "Hold", "Completed", "Cancelled"],
-        };
+        // no status → all jobs assigned to this engineer
         break;
     }
 
-    const jobs = await Job.find(filter)
-      .populate("customer")
-      .populate("assignedServiceCenter", "name")
-      .sort({ createdAt: -1 });
+    // ---- Exact-match filters --------------------------------------------
+    if (jobSource) filter.jobSource = jobSource;
+    if (callType) filter.callType = callType;
+    if (natureOfWork) filter.natureOfWork = natureOfWork;
+
+    // ---- Date range on complaintDate ------------------------------------
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom)
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo)
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    // ---- Free-text search ----------------------------------------------
+    if (search && search.trim()) {
+      const term = search.trim();
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+
+      const matchingCustomers = await Customer.find({
+        company: engineer.company,
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
+
+      filter.$or = [
+        { complaintNumber: rx },
+        { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
+      ];
+    }
+
+    // ---- Pagination -----------------------------------------------------
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
+
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("customer", "name mobileNumber address")
+        .populate("assignedServiceCenter", "name")
+        .populate("assignedServiceEngineer", "name")
+        .sort({ complaintDate: sortDir, createdAt: sortDir })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Job.countDocuments(filter),
+    ]);
 
     return res.status(200).json({
       success: true,
       data: jobs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.max(Math.ceil(total / limitNum), 1),
+      },
     });
   } catch (error) {
     console.error("myJobs error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to fetch jobs",

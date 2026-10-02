@@ -1,5 +1,3 @@
-const bcrypt = require("bcrypt");
-
 const Job = require("../../../models/Job");
 const ServiceCenter = require("../../../models/ServiceCenter");
 const ServiceEngineer = require("../../../models/ServiceEngineer");
@@ -9,24 +7,60 @@ const SparePartStock = require("../../../models/SparePartStock");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
 const { default: mongoose } = require("mongoose");
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const OPEN_STATUSES = [
-  "Registered",
-  "Service Center Assigned",
-  "Service Engineer Assigned",
-  "Hold",
+/* =========================================================
+   STATUS CONSTANTS
+   =========================================================
+   These strings MUST match exactly what's stored in the DB.
+   Current DB uses values WITH spaces (e.g. "Service Center Assigned").
+   Update both this map and DB together if you rename anything.
+   ========================================================= */
+const JOB_STATUS = {
+  REGISTERED: "Registered",
+  SERVICE_CENTER_ASSIGNED: "Service Center Assigned",
+  SERVICE_ENGINEER_ASSIGNED: "Service Engineer Assigned",
+  PENDING: "Pending",
+  HOLD: "Hold",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
+// Flat list — used for validation (e.g. updateJobStatus)
+const JOB_STATUS_LIST = Object.values(JOB_STATUS);
+
+// Every status a job can be in while it belongs to a service center.
+const SERVICE_CENTER_STATUSES = [
+  JOB_STATUS.REGISTERED,
+  JOB_STATUS.SERVICE_CENTER_ASSIGNED,
+  JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
+  JOB_STATUS.PENDING,
+  JOB_STATUS.HOLD,
+  JOB_STATUS.COMPLETED,
+  JOB_STATUS.CANCELLED,
 ];
 
+// "Open" = not finished. Completed and Cancelled are terminal.
+const OPEN_STATUSES = [
+  JOB_STATUS.REGISTERED,
+  JOB_STATUS.SERVICE_CENTER_ASSIGNED,
+  JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
+  JOB_STATUS.PENDING,
+  JOB_STATUS.HOLD,
+];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /* =========================================================
-   JOBS
+   HELPERS
    ========================================================= */
-// Helper — prevent regex injection from user input
 function escapeRegex(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// GET /service-center/jobs?status=Hold
-// GET /service-center/jobs?status=Hold&search=john&natureOfWork=Repair&...
+/* =========================================================
+   JOBS
+   ========================================================= */
+
+// GET /service-center/jobs
 exports.serviceCenterJobs = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
@@ -44,37 +78,27 @@ exports.serviceCenterJobs = async (req, res) => {
       limit = 20,
     } = req.query;
 
-    // ---- Base scope: this service center only --------------------------
     const filter = { assignedServiceCenter: serviceCenter };
     if (status) filter.status = status;
 
-    // ---- Exact-match filters ------------------------------------------
     if (jobSource) filter.jobSource = jobSource;
     if (callType) filter.callType = callType;
     if (natureOfWork) filter.natureOfWork = natureOfWork;
     if (serviceEngineer) filter.assignedServiceEngineer = serviceEngineer;
 
-    // ---- Date range on complaintDate (inclusive) -----------------------
     if (dateFrom || dateTo) {
       filter.complaintDate = {};
       if (dateFrom)
         filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
-      if (dateTo) {
-        // Include the whole end day
-        const end = new Date(`${dateTo}T23:59:59.999Z`);
-        filter.complaintDate.$lte = end;
-      }
+      if (dateTo)
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
     }
 
-    // ---- Free-text search across complaintNumber / customer -------------
-    // If complaintNumber or customer fields can be searched, use $or.
-    // For customer name we must query the Customer collection and match by id.
     if (search && search.trim()) {
       const term = search.trim();
       const rx = new RegExp(escapeRegex(term), "i");
 
-      // Find matching customers first (name / mobile)
-      const Customer = mongoose.model("Customer"); // adjust if needed
+      const Customer = mongoose.model("Customer");
       const matchingCustomers = await Customer.find({
         $or: [{ name: rx }, { mobileNumber: rx }],
       })
@@ -84,12 +108,10 @@ exports.serviceCenterJobs = async (req, res) => {
       filter.$or = [
         { complaintNumber: rx },
         { customer: { $in: matchingCustomers.map((c) => c._id) } },
-        // Optional: also match raw _id if user pastes an id
         ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
       ];
     }
 
-    // ---- Paginate ------------------------------------------------------
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const sortDir = sort === "asc" ? 1 : -1;
@@ -117,6 +139,110 @@ exports.serviceCenterJobs = async (req, res) => {
     });
   } catch (error) {
     console.error("serviceCenterJobs error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch jobs",
+      error: error.message,
+    });
+  }
+};
+
+// GET /service-center/jobs-by-status
+// UI sends a label; this endpoint translates it to a DB filter.
+//   "Pending"     → not Completed, not Cancelled (active)
+//   "Completed"   → exactly Completed
+//   undefined/""  → everything except Completed
+//   anything else → exact match
+exports.serviceCenterJobsByStatus = async (req, res) => {
+  try {
+    const serviceCenter = req.user._id;
+    const {
+      status,
+      search,
+      jobSource,
+      callType,
+      natureOfWork,
+      serviceEngineer,
+      dateFrom,
+      dateTo,
+      sort = "desc",
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const filter = { assignedServiceCenter: serviceCenter };
+
+    if (status === "Pending") {
+      // active jobs, not finished or cancelled
+      filter.status = {
+        $nin: [JOB_STATUS.COMPLETED, JOB_STATUS.CANCELLED],
+      };
+    } else if (status === "Completed") {
+      filter.status = JOB_STATUS.COMPLETED;
+    } else if (status) {
+      filter.status = status;
+    } else {
+      filter.status = { $ne: JOB_STATUS.COMPLETED };
+    }
+
+    if (jobSource) filter.jobSource = jobSource;
+    if (callType) filter.callType = callType;
+    if (natureOfWork) filter.natureOfWork = natureOfWork;
+    if (serviceEngineer) filter.assignedServiceEngineer = serviceEngineer;
+
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom)
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo)
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    if (search && search.trim()) {
+      const term = search.trim();
+      const rx = new RegExp(escapeRegex(term), "i");
+
+      const Customer = mongoose.model("Customer");
+      const matchingCustomers = await Customer.find({
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
+
+      filter.$or = [
+        { complaintNumber: rx },
+        { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
+      ];
+    }
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
+
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("customer")
+        .populate("assignedServiceEngineer", "name contactNumber")
+        .sort({ complaintDate: sortDir, createdAt: sortDir })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Job.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: jobs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.max(Math.ceil(total / limitNum), 1),
+      },
+    });
+  } catch (error) {
+    console.error("serviceCenterJobsByStatus error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch jobs",
@@ -153,6 +279,7 @@ exports.getJobLogs = async (req, res) => {
 
 // POST /service-center/assignJob
 // body: { jobIds: [id, ...], serviceEngineer, scheduleDate, note }
+// Every assigned job lands on SERVICE_ENGINEER_ASSIGNED.
 exports.assignJob = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
@@ -183,7 +310,7 @@ exports.assignJob = async (req, res) => {
         $set: {
           assignedServiceEngineer: serviceEngineer,
           ...(scheduleDate && { scheduleDate }),
-          status: "Service Engineer Assigned",
+          status: JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
           assignedAt: Date.now(),
         },
         $push: {
@@ -212,7 +339,6 @@ exports.assignJob = async (req, res) => {
 };
 
 // PUT /service-center/holdJob/:id
-// body: { holdSubStatus, holdReason, holdPhotos, holdRemarks }
 exports.holdJob = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
@@ -239,7 +365,7 @@ exports.holdJob = async (req, res) => {
       return res.status(404).json({ success: false, message: "Job not found" });
     }
 
-    job.status = "Hold";
+    job.status = JOB_STATUS.HOLD;
     job.holdSubStatus = holdSubStatus;
     job.holdReason = holdReason;
     job.holdPhotos = holdPhotos || [];
@@ -266,8 +392,6 @@ exports.holdJob = async (req, res) => {
 };
 
 // PUT /service-center/closeJob/:id
-// body: { consumedParts, sparesTotal, serviceCharge, discount, actualIssueFound,
-//         correctiveActionTaken, closurePhotos, customerSignature, otp }
 exports.closeJob = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
@@ -297,8 +421,7 @@ exports.closeJob = async (req, res) => {
       });
     }
 
-    // TODO: replace with real OTP verification (e.g. against an OTP sent to the
-    // customer at closure time). This currently only checks that one was submitted.
+    // TODO: replace with real OTP verification.
     const otpVerified = Boolean(otp);
     if (!otpVerified) {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
@@ -321,7 +444,7 @@ exports.closeJob = async (req, res) => {
     job.closurePhotos = closurePhotos || [];
     job.customerSignature = customerSignature;
     job.closureOtpVerified = true;
-    job.status = "Completed";
+    job.status = JOB_STATUS.COMPLETED;
     job.solveDate = Date.now();
     job.logs.push({
       at: Date.now(),
@@ -345,14 +468,11 @@ exports.closeJob = async (req, res) => {
 };
 
 // PUT /service-center/cancelJob/:id
-// body: { reason }
 exports.cancelJob = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
     const { id } = req.params;
     const { reason } = req.body;
-
-    console.log(id);
 
     if (!reason) {
       return res
@@ -367,14 +487,14 @@ exports.cancelJob = async (req, res) => {
     if (!job) {
       return res.status(404).json({ success: false, message: "Job not found" });
     }
-    if (["Completed", "Cancelled"].includes(job.status)) {
+    if ([JOB_STATUS.COMPLETED, JOB_STATUS.CANCELLED].includes(job.status)) {
       return res.status(400).json({
         success: false,
         message: `Job is already ${job.status.toLowerCase()} and can't be cancelled`,
       });
     }
 
-    job.status = "Cancelled";
+    job.status = JOB_STATUS.CANCELLED;
     job.cancelReason = reason;
     job.cancelledAt = Date.now();
     job.logs.push({
@@ -400,27 +520,16 @@ exports.cancelJob = async (req, res) => {
 
 // PUT /service-center/updateJobStatus/:id
 // body: { status, note }
-// Status-only edit — for reassignment use assignJob, for hold use holdJob,
-// for closing use closeJob. This is for direct/manual status corrections.
-const JOB_STATUS = [
-  "Registered",
-  "Service Center Assigned",
-  "Service Engineer Assigned",
-  "Hold",
-  "Completed",
-  "Cancelled",
-];
-
 exports.updateJobStatus = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
     const { id } = req.params;
     const { status, note } = req.body;
 
-    if (!status || !JOB_STATUS.includes(status)) {
+    if (!status || !JOB_STATUS_LIST.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: `status must be one of: ${JOB_STATUS.join(", ")}`,
+        message: `status must be one of: ${JOB_STATUS_LIST.join(", ")}`,
       });
     }
 
@@ -434,7 +543,7 @@ exports.updateJobStatus = async (req, res) => {
 
     const previousStatus = job.status;
 
-    if (status === "Completed") {
+    if (status === JOB_STATUS.COMPLETED) {
       job.solveDate = Date.now();
     }
 
@@ -463,8 +572,6 @@ exports.updateJobStatus = async (req, res) => {
 /* =========================================================
    SERVICE ENGINEERS (scoped to this service center only)
    ========================================================= */
-
-// GET /service-center/getServiceEngineers
 exports.getServiceEngineers = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
@@ -491,8 +598,6 @@ exports.getServiceEngineers = async (req, res) => {
 /* =========================================================
    PROFILE
    ========================================================= */
-
-// GET /service-center/getProfile
 exports.getMyProfile = async (req, res) => {
   try {
     const profile = await ServiceCenter.findById(req.user._id).select(
@@ -514,10 +619,6 @@ exports.getMyProfile = async (req, res) => {
   }
 };
 
-// PUT /service-center/updateProfile
-// body: { name, address, contactPerson, contactNumber, gstNumber }
-// NOTE: matches the ServiceCenter schema's actual fields — not aadharNumber,
-// which belongs to ServiceEngineer.
 exports.updateMyProfile = async (req, res) => {
   try {
     const { name, address, contactPerson, contactNumber, gstNumber } = req.body;
@@ -549,8 +650,6 @@ exports.updateMyProfile = async (req, res) => {
   }
 };
 
-// PUT /service-center/changePassword
-// body: { currentPassword, newPassword }
 exports.changeMyPassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -600,63 +699,102 @@ exports.changeMyPassword = async (req, res) => {
 
 /* =========================================================
    DASHBOARD
+   =========================================================
+   Single aggregation over all jobs for this service center:
+     - count per status
+     - total
+     - aging buckets (open only)
+   Every status key is always present in the response, even at 0.
    ========================================================= */
-
-// GET /service-center/dashboard-stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const serviceCenter = req.user._id;
+    const serviceCenterId = new mongoose.Types.ObjectId(req.user._id);
     const now = new Date();
 
-    const [
-      pending1Day,
-      pending3Days,
-      pending7Days,
-      totalJobs,
-      pendingAtServiceCenter,
-      jobsOnHold,
-      completedJobs,
-    ] = await Promise.all([
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 1 * DAY_MS) },
-      }),
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 3 * DAY_MS) },
-      }),
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: { $in: OPEN_STATUSES },
-        complaintDate: { $lte: new Date(now - 7 * DAY_MS) },
-      }),
-      Job.countDocuments({ assignedServiceCenter: serviceCenter }),
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: "Service Center Assigned",
-      }),
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: "Hold",
-      }),
-      Job.countDocuments({
-        assignedServiceCenter: serviceCenter,
-        status: "Completed",
-      }),
+    const [result] = await Job.aggregate([
+      { $match: { assignedServiceCenter: serviceCenterId } },
+      {
+        $facet: {
+          byStatus: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+
+          total: [{ $count: "count" }],
+
+          aging: [
+            { $match: { status: { $in: OPEN_STATUSES } } },
+            {
+              $project: {
+                ageMs: { $subtract: [now, "$complaintDate"] },
+              },
+            },
+            {
+              $project: {
+                over1: { $gte: ["$ageMs", 1 * DAY_MS] },
+                over3: { $gte: ["$ageMs", 3 * DAY_MS] },
+                over7: { $gte: ["$ageMs", 7 * DAY_MS] },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                over1: { $sum: { $cond: ["$over1", 1, 0] } },
+                over3: { $sum: { $cond: ["$over3", 1, 0] } },
+                over7: { $sum: { $cond: ["$over7", 1, 0] } },
+              },
+            },
+          ],
+        },
+      },
     ]);
+
+    // Initialize every known status at 0 so the map is complete.
+    const byStatus = {};
+    for (const status of SERVICE_CENTER_STATUSES) byStatus[status] = 0;
+    for (const row of result.byStatus) {
+      if (row._id != null) byStatus[row._id] = row.count;
+    }
+
+    const totalJobs = result.total[0]?.count ?? 0;
+    const aging = result.aging[0] ?? { over1: 0, over3: 0, over7: 0 };
+
+    const registered = byStatus[JOB_STATUS.REGISTERED] ?? 0;
+    const pendingAtServiceCenter =
+      byStatus[JOB_STATUS.SERVICE_CENTER_ASSIGNED] ?? 0;
+    const jobsWithEngineer =
+      (byStatus[JOB_STATUS.SERVICE_ENGINEER_ASSIGNED] ?? 0) +
+      (byStatus[JOB_STATUS.PENDING] ?? 0);
+    const pending = byStatus[JOB_STATUS.PENDING] ?? 0;
+    const jobsOnHold = byStatus[JOB_STATUS.HOLD] ?? 0;
+    const completedJobs = byStatus[JOB_STATUS.COMPLETED] ?? 0;
+    const cancelledJobs = byStatus[JOB_STATUS.CANCELLED] ?? 0;
+
+    const openJobs = OPEN_STATUSES.reduce(
+      (sum, s) => sum + (byStatus[s] ?? 0),
+      0,
+    );
 
     return res.status(200).json({
       success: true,
       data: {
-        pending1Day,
-        pending3Days,
-        pending7Days,
+        // Aging
+        pending1Day: aging.over1,
+        pending3Days: aging.over3,
+        pending7Days: aging.over7,
+
+        // Totals
         totalJobs,
+        openJobs,
+
+        // Rollups
+        registered,
         pendingAtServiceCenter,
+        jobsWithEngineer,
+        pending,
         jobsOnHold,
         completedJobs,
+        cancelledJobs,
+
+        // Full breakdown
+        byStatus,
       },
     });
   } catch (error) {
@@ -669,6 +807,9 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
+/* =========================================================
+   LOGIN ON BEHALF OF ENGINEER
+   ========================================================= */
 exports.serviceEngineerLoginByCenter = async (req, res, next) => {
   try {
     const { id } = req.params || "";
@@ -707,15 +848,15 @@ exports.serviceEngineerLoginByCenter = async (req, res, next) => {
         res.status(200).json({ token, engineer: payload, success: true });
       },
     );
-
-    // use appropriate status code to send data
   } catch (error) {
     console.log(error.message);
     next(error);
   }
 };
 
-// GET /api/service-center/getMySparePartStock
+/* =========================================================
+   SPARE PARTS
+   ========================================================= */
 exports.getMySparePartStock = async (req, res) => {
   try {
     const center = await ServiceCenter.findById(req.user._id);
@@ -747,9 +888,6 @@ exports.getMySparePartStock = async (req, res) => {
   }
 };
 
-// GET /api/service-center/getMySparePartTransactions
-// Everything that moved in (allocations from the company) or out (consumption
-// on jobs) of this center's own inventory.
 exports.getMySparePartTransactions = async (req, res) => {
   try {
     const center = await ServiceCenter.findById(req.user._id);
@@ -774,126 +912,6 @@ exports.getMySparePartTransactions = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch transactions",
-      error: error.message,
-    });
-  }
-};
-
-exports.serviceCenterJobsByStatus = async (req, res) => {
-  try {
-    const serviceCenter = req.user._id;
-    const {
-      status,
-      search,
-      jobSource,
-      callType,
-      natureOfWork,
-      serviceEngineer,
-      dateFrom,
-      dateTo,
-      sort = "desc",
-      page = 1,
-      limit = 20,
-    } = req.query;
-
-    // ---- Base scope: this service center only --------------------------
-    const filter = { assignedServiceCenter: serviceCenter };
-
-    switch (status) {
-      case "Pending":
-        filter.status = { $ne: null };
-        filter.status = {
-          $nin: ["Completed", "Cancelled"],
-        };
-        break;
-
-      case "Completed":
-        filter.status = "Completed";
-        break;
-
-      case undefined:
-      case "":
-      case null:
-        filter.status = { $ne: "Completed" };
-        break;
-
-      default:
-        filter.status = status;
-        break;
-    }
-
-    // ---- Exact-match filters -------------------------------------------
-    if (jobSource) filter.jobSource = jobSource;
-    if (callType) filter.callType = callType;
-    if (natureOfWork) filter.natureOfWork = natureOfWork;
-
-    // Note: if the caller ALSO passed serviceEngineer explicitly, apply it.
-    // If status=Pending already set assignedServiceEngineer, this narrows further.
-    if (serviceEngineer) {
-      filter.assignedServiceEngineer = serviceEngineer;
-    }
-
-    // ---- Date range on complaintDate -----------------------------------
-    if (dateFrom || dateTo) {
-      filter.complaintDate = {};
-      if (dateFrom) {
-        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
-      }
-      if (dateTo) {
-        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
-      }
-    }
-
-    // ---- Free-text search ----------------------------------------------
-    if (search && search.trim()) {
-      const term = search.trim();
-      const rx = new RegExp(escapeRegex(term), "i");
-
-      const Customer = mongoose.model("Customer");
-      const matchingCustomers = await Customer.find({
-        $or: [{ name: rx }, { mobileNumber: rx }],
-      })
-        .select("_id")
-        .lean();
-
-      filter.$or = [
-        { complaintNumber: rx },
-        { customer: { $in: matchingCustomers.map((c) => c._id) } },
-        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
-      ];
-    }
-
-    // ---- Paginate ------------------------------------------------------
-    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
-    const sortDir = sort === "asc" ? 1 : -1;
-
-    const [jobs, total] = await Promise.all([
-      Job.find(filter)
-        .populate("customer")
-        .populate("assignedServiceEngineer", "name contactNumber")
-        .sort({ complaintDate: sortDir, createdAt: sortDir })
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum)
-        .lean(),
-      Job.countDocuments(filter),
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      data: jobs,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        pages: Math.max(Math.ceil(total / limitNum), 1),
-      },
-    });
-  } catch (error) {
-    console.error("serviceCenterJobsByStatus error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch jobs",
       error: error.message,
     });
   }

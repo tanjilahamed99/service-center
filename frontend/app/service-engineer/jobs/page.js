@@ -12,7 +12,7 @@ export default function JobsPage() {
         </h2>
       </div>
 
-      <ServiceEngineerJobsListPage />
+      <ServiceEngineerJobsListPage variant={"all"} />
     </div>
   );
 }

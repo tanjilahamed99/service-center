@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { STATUS_TONE, JOB_STATUS, JOB_STATUS_LIST } from "./Constants";
 import StatusBadge from "./Statusbadge";
 import {
   Search,
   ArrowUpDown,
-  Pencil,
   UserPlus,
   ScrollText,
   Ban,
@@ -15,28 +14,37 @@ import {
   Phone,
   CalendarRange,
   GalleryHorizontal,
+  X,
 } from "lucide-react";
 import { getJobCategoryOptions } from "@/actions/company";
 import DownloadExcelButton from "./DownloadExcelButton";
 
-// Statuses a job can still be assigned / cancelled from, used by the "all" variant
-// to decide per-row which actions make sense instead of hiding them for the whole table.
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const ASSIGNABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
 ];
+
 const BULK_SELECTABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
   JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
   JOB_STATUS.HOLD,
 ];
+
 const CANCELLABLE_STATUSES = [JOB_STATUS.REGISTERED];
 
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-900 focus:border-electric-400 focus:outline-none focus:ring-1 focus:ring-electric-400 sm:w-auto";
 
 const TIME_ZONE = "Asia/Kolkata";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function formatDuration(from, to) {
   if (!from || !to) return "—";
@@ -45,7 +53,7 @@ function formatDuration(from, to) {
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
 
   let diffMs = end - start;
-  if (diffMs < 0) diffMs = 0; // guards against bad data (solveDate before complaintDate)
+  if (diffMs < 0) diffMs = 0;
 
   const totalMinutes = Math.floor(diffMs / (1000 * 60));
   const days = Math.floor(totalMinutes / (60 * 24));
@@ -87,16 +95,18 @@ function formatShortDate(value) {
   });
 }
 
-// Converts any date value to a "YYYY-MM-DD" string in the given timezone —
-// deliberately the same format <input type="date"> produces, so date-range
-// filtering is a plain string comparison instead of Date arithmetic (which
-// is where the earlier UTC-midnight/IST-offset bug came from).
-function toISODateInZone(value, timeZone = TIME_ZONE) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-CA", { timeZone }); // en-CA => YYYY-MM-DD
+function useDebouncedValue(value, delay = 350) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
 }
+
+// ---------------------------------------------------------------------------
+// Subcomponents
+// ---------------------------------------------------------------------------
 
 function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
   const dim = size === "sm" ? "h-8 w-8" : "h-9 w-9";
@@ -112,7 +122,8 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex ${dim} shrink-0 items-center text-black justify-center rounded-lg transition ${toneClass}`}>
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-lg text-black transition ${toneClass}`}
+    >
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </button>
   );
@@ -121,22 +132,20 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
 function RowActions({
   job,
   canAssign,
-  canCancel,
-  onEditJob,
   onAssignJob,
   onViewLogs,
-  onViewImages, // NEW
+  onViewImages,
   onCancelJob,
   size = "md",
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center justify-end gap-1">
       {job.status === "Completed" && (
         <ActionButton
           label="View Images"
           Icon={GalleryHorizontal}
           size={size}
-          onClick={() => onViewImages?.(job)} // was onViewLogs — now its own handler
+          onClick={() => onViewImages?.(job)}
         />
       )}
 
@@ -149,6 +158,7 @@ function RowActions({
           onClick={() => onAssignJob?.([job._id])}
         />
       )}
+
       <ActionButton
         label="View Logs"
         Icon={ScrollText}
@@ -169,60 +179,90 @@ function RowActions({
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasFilters, onClear }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
       <Inbox className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
-      <p className="text-sm font-medium text-slate-500">
-        No jobs match the current filters
-      </p>
-      <p className="text-xs text-slate-400">
-        Try clearing a filter or searching a different term.
-      </p>
+      <div>
+        <p className="text-sm font-medium text-slate-500">
+          {hasFilters
+            ? "No jobs match the current filters"
+            : "No jobs to display"}
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          {hasFilters
+            ? "Try clearing a filter or searching a different term."
+            : "New complaints will appear here as they come in."}
+        </p>
+      </div>
+      {hasFilters && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Clear filters
+        </button>
+      )}
     </div>
   );
 }
 
-/**
- * variant: "registered" | "serviceCenter" | "serviceEngineer" | "hold" | "completed" | "cancelled" | "all"
- * Controls which extra filter/column shows up, and which row actions are available.
- */
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function JobsTable({
   title,
   subtitle,
-  jobs,
+  jobs = [],
   variant = "registered",
   serviceCenterOptions = [],
   serviceEngineerOptions = [],
+  filters = {},
+  onFiltersChange,
+  totalCount,
   onEditJob,
   onAssignJob,
   onViewLogs,
   onCancelJob,
-  onViewImages, // NEW
+  onViewImages,
+  showStatusFilter: showStatusFilterProp,
 }) {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [jobSource, setJobSource] = useState("");
-  const [callType, setCallType] = useState("");
-  const [nature, setNature] = useState("");
-  const [serviceCenter, setServiceCenter] = useState("");
-  const [serviceEngineer, setServiceEngineer] = useState("");
-  const [dateFrom, setDateFrom] = useState(""); // "YYYY-MM-DD"
-  const [dateTo, setDateTo] = useState(""); // "YYYY-MM-DD"
-  const [selected, setSelected] = useState([]);
-  const [sortDesc, setSortDesc] = useState(true);
+  // ---- Controlled filter values (from URL) --------------------------------
+  const search = filters.search ?? "";
+  const status = filters.status ?? "";
+  const jobSource = filters.jobSource ?? "";
+  const callType = filters.callType ?? "";
+  const nature = filters.natureOfWork ?? "";
+  const serviceCenter = filters.serviceCenter ?? "";
+  const serviceEngineer = filters.serviceEngineer ?? "";
+  const dateFrom = filters.dateFrom ?? "";
+  const dateTo = filters.dateTo ?? "";
+  const sortDesc = (filters.sort ?? "desc") === "desc";
 
+  // ---- Local state --------------------------------------------------------
+  const [selected, setSelected] = useState([]);
+  const [jobSourceOptions, setJobSourceOptions] = useState([]);
+  const [callTypeOptions, setCallTypeOptions] = useState([]);
+  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
+
+  // Debounced search box
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebouncedValue(searchInput, 350);
+  const isFirstSearchSync = useRef(true);
+
+  // ---- Variant-driven UI --------------------------------------------------
   const isAllVariant = variant === "all";
 
-  const showStatusFilter = isAllVariant;
+  const showStatusFilter =
+    typeof showStatusFilterProp === "boolean"
+      ? showStatusFilterProp
+      : isAllVariant;
+
   const showAssignAction = isAllVariant
     ? null
     : variant === "registered" || variant === "serviceCenter";
-  const showBulkAssign = isAllVariant
-    ? true
-    : ["registered", "serviceCenter", "serviceEngineer", "hold"].includes(
-        variant,
-      );
   const showServiceCenterFilter =
     isAllVariant ||
     ["serviceCenter", "serviceEngineer", "hold"].includes(variant);
@@ -232,125 +272,114 @@ export default function JobsTable({
   const showCancelReasonColumn = isAllVariant || variant === "cancelled";
   const showCancelAction = isAllVariant ? null : variant === "registered";
 
-  function canAssignRow(job) {
-    return isAllVariant
-      ? ASSIGNABLE_STATUSES.includes(job.status)
-      : showAssignAction;
-  }
-  function canCancelRow(job) {
-    return isAllVariant
-      ? CANCELLABLE_STATUSES.includes(job.status)
-      : showCancelAction;
-  }
-  function canSelectRow(job) {
-    return isAllVariant ? BULK_SELECTABLE_STATUSES.includes(job.status) : true;
-  }
+  // Server already filtered.
+  const filtered = jobs;
 
-  const filtered = useMemo(() => {
-    const rows = jobs.filter((job) => {
-      const matchesSearch =
-        !search ||
-        job?.complaintNumber?.toLowerCase().includes(search.toLowerCase()) ||
-        job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        job?.customer?.mobileNumber?.includes(search) ||
-        job?._id?.includes(search);
-      const matchesStatus = !status || job?.status === status;
-      const matchesJobSource = !jobSource || job?.jobSource === jobSource;
-      const matchesCallType = !callType || job?.callType === callType;
-      const matchesNature = !nature || job?.natureOfWork === nature;
-      const matchesCenter =
-        !serviceCenter ||
-        String(
-          job?.assignedServiceCenter?._id || job?.assignedServiceCenter,
-        ) === String(serviceCenter);
+  // ---- Filter helpers -----------------------------------------------------
+  const setFilter = (key, value) => onFiltersChange?.({ [key]: value });
 
-      const matchesEngineer =
-        !serviceEngineer ||
-        String(
-          job?.assignedServiceEngineer?._id || job?.assignedServiceEngineer,
-        ) === String(serviceEngineer);
-
-      const jobDateStr = toISODateInZone(job?.complaintDate);
-      const matchesDateRange =
-        (!dateFrom || jobDateStr >= dateFrom) &&
-        (!dateTo || jobDateStr <= dateTo);
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesJobSource &&
-        matchesCallType &&
-        matchesNature &&
-        matchesCenter &&
-        matchesEngineer &&
-        matchesDateRange
-      );
+  const clearFilters = () => {
+    onFiltersChange?.({
+      search: "",
+      status: "",
+      jobSource: "",
+      callType: "",
+      natureOfWork: "",
+      serviceCenter: "",
+      serviceEngineer: "",
+      dateFrom: "",
+      dateTo: "",
+      // sort preserved
     });
-    return rows.sort((a, b) =>
-      sortDesc
-        ? new Date(b.complaintDate) - new Date(a.complaintDate)
-        : new Date(a.complaintDate) - new Date(b.complaintDate),
-    );
-  }, [
-    jobs,
-    search,
-    status,
-    jobSource,
-    callType,
-    nature,
-    serviceCenter,
-    serviceEngineer,
-    dateFrom,
-    dateTo,
-    sortDesc,
-  ]);
+    setSearchInput("");
+    setSelected([]);
+  };
 
-  const selectableRows = filtered.filter(canSelectRow);
-  const allSelected =
-    selectableRows.length > 0 && selected.length === selectableRows.length;
-  const hasActiveFilters =
+  const hasActiveFilters = Boolean(
     search ||
-    status ||
-    jobSource ||
-    callType ||
-    nature ||
-    serviceCenter ||
-    serviceEngineer ||
-    dateFrom ||
-    dateTo;
+      status ||
+      jobSource ||
+      callType ||
+      nature ||
+      serviceCenter ||
+      serviceEngineer ||
+      dateFrom ||
+      dateTo,
+  );
 
-  const [jobSourceOptions, setJobSourceOptions] = useState([]);
-  const [callTypeOptions, setCallTypeOptions] = useState([]);
-  const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([]);
-
+  // Keep search box synced when URL changes externally.
   useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  // Push debounced search to URL.
+  useEffect(() => {
+    if (isFirstSearchSync.current) {
+      isFirstSearchSync.current = false;
+      return;
+    }
+    if (debouncedSearch !== search) setFilter("search", debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  // Category options once.
+  useEffect(() => {
+    let cancelled = false;
     Promise.all([
       getJobCategoryOptions("JobSource"),
       getJobCategoryOptions("CallType"),
       getJobCategoryOptions("NatureOfWork"),
     ])
-      .then(([source, callType, nature]) => {
+      .then(([source, ct, natureRes]) => {
+        if (cancelled) return;
         setJobSourceOptions(source.data?.data ?? []);
-        setCallTypeOptions(callType.data?.data ?? []);
-        setNatureOfWorkOptions(nature.data?.data ?? []);
+        setCallTypeOptions(ct.data?.data ?? []);
+        setNatureOfWorkOptions(natureRes.data?.data ?? []);
       })
       .catch((err) =>
         console.error("Failed to load job category options", err),
       );
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function clearFilters() {
-    setSearch("");
-    setStatus("");
-    setJobSource("");
-    setCallType("");
-    setNature("");
-    setServiceCenter("");
-    setServiceEngineer("");
-    setDateFrom("");
-    setDateTo("");
+  // ---- Row predicates -----------------------------------------------------
+  function canAssignRow(job) {
+    return isAllVariant
+      ? ASSIGNABLE_STATUSES.includes(job.status)
+      : Boolean(showAssignAction);
+  }
+  function canSelectRow(job) {
+    return isAllVariant
+      ? BULK_SELECTABLE_STATUSES.includes(job.status)
+      : true;
   }
 
+  const selectableRows = useMemo(
+    () => filtered.filter(canSelectRow),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered],
+  );
+  const allSelected =
+    selectableRows.length > 0 && selected.length === selectableRows.length;
+
+  function toggleAll() {
+    setSelected(allSelected ? [] : selectableRows.map((j) => j._id));
+  }
+  function toggleOne(id) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  useEffect(() => {
+    setSelected((prev) =>
+      prev.filter((id) => jobs.some((j) => j._id === id)),
+    );
+  }, [jobs]);
+
+  // ---- Render -------------------------------------------------------------
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -361,13 +390,13 @@ export default function JobsTable({
             <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
           )}
         </div>
-
         <div className="flex items-center gap-3">
           <p className="text-sm text-slate-400">
             <span className="font-semibold text-navy-900">
               {filtered.length}
             </span>{" "}
-            of {jobs.length} jobs
+            of {typeof totalCount === "number" ? totalCount : filtered.length}{" "}
+            jobs
           </p>
           <DownloadExcelButton
             jobs={filtered}
@@ -379,27 +408,41 @@ export default function JobsTable({
       {/* Filter bar */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4">
         <div className="flex flex-col gap-3">
+          {/* Search */}
           <div className="relative">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
               strokeWidth={1.75}
             />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search complaint no., customer name or number"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-navy-900 placeholder:text-slate-400 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm text-navy-900 placeholder:text-slate-400 focus:border-electric-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-electric-400"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={2} />
+              </button>
+            )}
           </div>
 
+          {/* Filters */}
           <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
             {showStatusFilter && (
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className={selectClass}>
+                onChange={(e) => setFilter("status", e.target.value)}
+                className={selectClass}
+                aria-label="Filter by status"
+              >
                 <option value="">All Statuses</option>
-                {JOB_STATUS_LIST.map((opt) => (
+                {JOB_STATUS_LIST?.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
@@ -409,10 +452,12 @@ export default function JobsTable({
 
             <select
               value={jobSource}
-              onChange={(e) => setJobSource(e.target.value)}
-              className={selectClass}>
+              onChange={(e) => setFilter("jobSource", e.target.value)}
+              className={selectClass}
+              aria-label="Filter by job source"
+            >
               <option value="">All Job Sources</option>
-              {jobSourceOptions?.map((opt) => (
+              {jobSourceOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -421,10 +466,12 @@ export default function JobsTable({
 
             <select
               value={callType}
-              onChange={(e) => setCallType(e.target.value)}
-              className={selectClass}>
+              onChange={(e) => setFilter("callType", e.target.value)}
+              className={selectClass}
+              aria-label="Filter by call type"
+            >
               <option value="">All Call Types</option>
-              {callTypeOptions?.map((opt) => (
+              {callTypeOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -433,10 +480,12 @@ export default function JobsTable({
 
             <select
               value={nature}
-              onChange={(e) => setNature(e.target.value)}
-              className={selectClass}>
+              onChange={(e) => setFilter("natureOfWork", e.target.value)}
+              className={selectClass}
+              aria-label="Filter by nature of work"
+            >
               <option value="">All Nature of Work</option>
-              {natureOfWorkOptions?.map((opt) => (
+              {natureOfWorkOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -446,8 +495,10 @@ export default function JobsTable({
             {showServiceCenterFilter && (
               <select
                 value={serviceCenter}
-                onChange={(e) => setServiceCenter(e.target.value)}
-                className={selectClass}>
+                onChange={(e) => setFilter("serviceCenter", e.target.value)}
+                className={selectClass}
+                aria-label="Filter by service center"
+              >
                 <option value="">All Service Centers</option>
                 {serviceCenterOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -460,8 +511,12 @@ export default function JobsTable({
             {showServiceEngineerFilter && (
               <select
                 value={serviceEngineer}
-                onChange={(e) => setServiceEngineer(e.target.value)}
-                className={`${selectClass} col-span-2 sm:col-span-1`}>
+                onChange={(e) =>
+                  setFilter("serviceEngineer", e.target.value)
+                }
+                className={`${selectClass} col-span-2 sm:col-span-1`}
+                aria-label="Filter by service engineer"
+              >
                 <option value="">All Service Engineers</option>
                 {serviceEngineerOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -471,7 +526,7 @@ export default function JobsTable({
               </select>
             )}
 
-            {/* Date range — filters by Booked (complaintDate), inclusive on both ends */}
+            {/* Date range */}
             <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
               <CalendarRange
                 className="h-4 w-4 shrink-0 text-slate-400"
@@ -480,7 +535,7 @@ export default function JobsTable({
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => setFilter("dateFrom", e.target.value)}
                 max={dateTo || undefined}
                 aria-label="From date"
                 className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
@@ -489,17 +544,19 @@ export default function JobsTable({
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => setFilter("dateTo", e.target.value)}
                 min={dateFrom || undefined}
                 aria-label="To date"
                 className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
               />
             </div>
 
+            {/* Sort */}
             <button
               type="button"
-              onClick={() => setSortDesc((v) => !v)}
-              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
+              onClick={() => setFilter("sort", sortDesc ? "asc" : "desc")}
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-black hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto"
+            >
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -508,7 +565,8 @@ export default function JobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 text-black rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
+                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto"
+              >
                 Clear filters
               </button>
             )}
@@ -516,40 +574,68 @@ export default function JobsTable({
         </div>
       </div>
 
-      {/* Responsive table */}
+      {/* Bulk assign bar */}
+      {selected.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-electric-400/40 bg-electric-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-navy-900">
+            {selected.length} job{selected.length > 1 ? "s" : ""} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onAssignJob?.(selected);
+                setSelected([]);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Assign {selected.length} to Service Center
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="w-full overflow-x-auto">
           <table className="min-w-max text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    disabled={selectableRows.length === 0}
+                    aria-label="Select all"
+                    className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
+                  />
+                </th>
                 <th className="whitespace-nowrap px-4 py-3">S.No.</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Complaint Id</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Booked</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Schedule</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Solved</th>
-
                 <th className="whitespace-nowrap px-4 py-3">TAT</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Customer</th>
-
-                <th className="whitespace-nowrap px-4 py-3">remark</th>
-
+                <th className="whitespace-nowrap px-4 py-3">Remark</th>
                 <th className="whitespace-nowrap px-4 py-3">OTP</th>
-
                 <th className="whitespace-nowrap px-4 py-3">Brand</th>
                 <th className="whitespace-nowrap px-4 py-3">Product</th>
                 <th className="whitespace-nowrap px-4 py-3">Model</th>
                 <th className="whitespace-nowrap px-4 py-3">Serial number</th>
                 <th className="whitespace-nowrap px-4 py-3">Warranty</th>
-
                 <th className="whitespace-nowrap px-4 py-3">
                   Nature / Call Type
                 </th>
-
                 <th className="whitespace-nowrap px-4 py-3">Assigned To</th>
 
                 {showHoldReasonColumn && (
@@ -581,7 +667,20 @@ export default function JobsTable({
                 return (
                   <tr
                     key={job._id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                  >
+                    {/* Select */}
+                    <td className="px-4 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(job._id)}
+                        onChange={() => toggleOne(job._id)}
+                        disabled={!canSelectRow(job)}
+                        aria-label={`Select job ${job._id}`}
+                        className="h-4 w-4 rounded border-slate-300 text-electric-500 focus:ring-electric-400 disabled:opacity-30"
+                      />
+                    </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">
                       {idx + 1}
                     </td>
@@ -611,7 +710,8 @@ export default function JobsTable({
                       <div className="min-w-[220px]">
                         <p
                           className="whitespace-nowrap font-medium text-navy-900"
-                          title={job.customer?.name}>
+                          title={job.customer?.name}
+                        >
                           {job.customer?.name || "N/A"}
                         </p>
 
@@ -619,13 +719,13 @@ export default function JobsTable({
                           <a
                             href={`tel:${job.customer.mobileNumber}`}
                             className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                            title={`Call ${job.customer.mobileNumber}`}>
+                            title={`Call ${job.customer.mobileNumber}`}
+                          >
                             <Phone
                               size={13}
                               strokeWidth={1.75}
                               className="shrink-0"
                             />
-
                             <span className="whitespace-nowrap">
                               {job.customer.mobileNumber}
                             </span>
@@ -640,13 +740,13 @@ export default function JobsTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-1 flex max-w-[260px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                            title={`Open location: ${job.customer.address}`}>
+                            title={`Open location: ${job.customer.address}`}
+                          >
                             <MapPin
                               size={13}
                               strokeWidth={1.75}
                               className="shrink-0"
                             />
-
                             <span className="whitespace-nowrap">
                               {job.customer.address}
                             </span>
@@ -659,7 +759,8 @@ export default function JobsTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-emerald-600 transition-colors hover:text-emerald-800 hover:underline"
-                            title="Where the engineer closed this job">
+                            title="Where the engineer closed this job"
+                          >
                             <MapPin
                               size={13}
                               strokeWidth={1.75}
@@ -674,23 +775,27 @@ export default function JobsTable({
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.remark}</p>
+                      <p className="text-navy-900">{job.remark || "—"}</p>
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.otp}</p>
+                      <p className="text-navy-900">{job.otp ?? "—"}</p>
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.brand}</p>
+                      <p className="text-navy-900">{job.brand || "—"}</p>
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.product}</p>
+                      <p className="text-navy-900">{job.product || "—"}</p>
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.modelNumber}</p>
+                      <p className="text-navy-900">{job.modelNumber || "—"}</p>
                     </td>
+
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <p className="text-navy-900">{job.serialNumber}</p>
+                      <p className="text-navy-900">{job.serialNumber || "—"}</p>
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-3.5">
@@ -712,38 +817,43 @@ export default function JobsTable({
                       <p className="whitespace-nowrap text-navy-900">
                         {job.natureOfWork || "—"}
                       </p>
-
                       <p className="whitespace-nowrap text-xs text-slate-500">
                         {job.callType || "—"}
                       </p>
                     </td>
 
-                    {/* Assigned To */}
+                    {/* Assigned To — center name, or engineer if only engineer */}
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                       <span
                         className="whitespace-nowrap"
-                        title={job?.assignedServiceCenter?.name}>
-                        {job?.assignedServiceCenter?.name || "—"}
+                        title={
+                          job?.assignedServiceEngineer?.name ||
+                          job?.assignedServiceCenter?.name
+                        }
+                      >
+                        {job?.assignedServiceEngineer?.name ||
+                          job?.assignedServiceCenter?.name ||
+                          "—"}
                       </span>
                     </td>
 
-                    {/* Hold Reason */}
                     {showHoldReasonColumn && (
                       <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         <span
                           className="whitespace-nowrap"
-                          title={job.holdReason ?? ""}>
+                          title={job.holdReason ?? ""}
+                        >
                           {job.holdReason ?? "—"}
                         </span>
                       </td>
                     )}
 
-                    {/* Cancellation Reason */}
                     {showCancelReasonColumn && (
                       <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         <span
                           className="whitespace-nowrap"
-                          title={job.cancelReason ?? ""}>
+                          title={job.cancelReason ?? ""}
+                        >
                           {job.cancelReason ?? "—"}
                         </span>
                       </td>
@@ -759,19 +869,15 @@ export default function JobsTable({
 
                     {/* Actions */}
                     <td className="whitespace-nowrap px-4 py-3.5">
-                      <div className="flex items-center justify-end">
-                        <RowActions
-                          job={job}
-                          canAssign={canAssignRow(job)}
-                          canCancel={canCancelRow(job)}
-                          onEditJob={onEditJob}
-                          onAssignJob={onAssignJob}
-                          onViewLogs={onViewLogs}
-                          onCancelJob={onCancelJob}
-                          size="sm"
-                          onViewImages={onViewImages} // NEW
-                        />
-                      </div>
+                      <RowActions
+                        job={job}
+                        canAssign={canAssignRow(job)}
+                        onAssignJob={onAssignJob}
+                        onViewLogs={onViewLogs}
+                        onCancelJob={onCancelJob}
+                        onViewImages={onViewImages}
+                        size="sm"
+                      />
                     </td>
                   </tr>
                 );
@@ -781,7 +887,10 @@ export default function JobsTable({
 
           {filtered.length === 0 && (
             <div className="px-4 py-16">
-              <EmptyState />
+              <EmptyState
+                hasFilters={hasActiveFilters}
+                onClear={clearFilters}
+              />
             </div>
           )}
         </div>
