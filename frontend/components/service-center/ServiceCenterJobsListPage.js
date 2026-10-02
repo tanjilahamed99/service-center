@@ -21,15 +21,21 @@ import ServiceCenterJobsTable from "./ServiceCenterJobTable";
 import ServiceCenterAssignJobModal from "./ServiceCenterAssignModal";
 import Pagination from "../Pagination";
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const PAGE_SIZE = 20;
 
 const VARIANT_STATUS_FILTER = {
   registered: JOB_STATUS.REGISTERED,
   serviceCenter: JOB_STATUS.SERVICE_CENTER_ASSIGNED,
   serviceEngineer: JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
+  pending: JOB_STATUS.PENDING,
   hold: JOB_STATUS.HOLD,
   completed: JOB_STATUS.COMPLETED,
   cancelled: JOB_STATUS.CANCELLED,
+  // "all" has no entry — no status is sent by default.
 };
 
 const EMPTY_PAGINATION = { total: 0, pages: 1, page: 1, limit: PAGE_SIZE };
@@ -47,12 +53,16 @@ const FILTER_KEYS = [
   "sort",
 ];
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function ServiceJobsListPage({ variant, title, subtitle }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ---- Read state from URL ------------------------------------------------
+  // ---- Page + filters come from the URL ----------------------------------
   const pageParam = parseInt(searchParams.get("page") ?? "1", 10);
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 
@@ -106,7 +116,11 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
       setError("");
 
       try {
-        const status = VARIANT_STATUS_FILTER[variant];
+        // Precedence: URL filter > variant lock.
+        // If the URL has `status`, it wins; otherwise the variant's status applies.
+        const variantStatus = VARIANT_STATUS_FILTER[variant];
+        const status = targetFilters.status ?? variantStatus;
+
         const res = await serviceCenterJobs({
           ...(status ? { status } : {}),
           ...targetFilters,
@@ -149,16 +163,13 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
       .then((res) => {
         if (!cancelled) setServiceEngineers(res.data?.data ?? []);
       })
-      .catch((err) =>
-        console.error("Failed to load service engineers", err),
-      );
+      .catch((err) => console.error("Failed to load service engineers", err));
     return () => {
       cancelled = true;
     };
   }, []);
 
   // ---- URL updater --------------------------------------------------------
-  // Any change to filters or page => update URL. That drives the fetch.
   const updateQuery = useCallback(
     (patch, { resetPage = true } = {}) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -170,10 +181,9 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
       if (resetPage) params.delete("page");
 
       startTransition(() => {
-        router.push(
-          params.toString() ? `${pathname}?${params}` : pathname,
-          { scroll: false },
-        );
+        router.push(params.toString() ? `${pathname}?${params}` : pathname, {
+          scroll: false,
+        });
       });
     },
     [pathname, router, searchParams],
@@ -187,16 +197,14 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
       else params.set("page", String(nextPage));
 
       startTransition(() => {
-        router.push(
-          params.toString() ? `${pathname}?${params}` : pathname,
-          { scroll: false },
-        );
+        router.push(params.toString() ? `${pathname}?${params}` : pathname, {
+          scroll: false,
+        });
       });
     },
     [page, pathname, router, searchParams],
   );
 
-  // Called by the table whenever any filter control changes.
   const handleFiltersChange = useCallback(
     (patch) => updateQuery(patch, { resetPage: true }),
     [updateQuery],
@@ -220,19 +228,20 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
 
   const showInitialSkeleton = initialLoading && jobs.length === 0;
 
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
   return (
     <div className="relative">
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
-        >
+          className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => fetchJobs(page, filters, { bypassCache: true })}
-            className="font-medium underline hover:no-underline"
-          >
+            className="font-medium underline hover:no-underline">
             Retry
           </button>
         </div>
@@ -244,8 +253,7 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
           isPending
             ? "pointer-events-none opacity-60 transition-opacity duration-150"
             : "transition-opacity duration-150"
-        }
-      >
+        }>
         {showInitialSkeleton ? (
           <div className="animate-pulse space-y-3">
             <div className="h-8 w-64 rounded bg-slate-200" />
@@ -267,8 +275,10 @@ export default function ServiceJobsListPage({ variant, title, subtitle }) {
             onHoldJob={setHoldTarget}
             onViewLogs={setLogsTarget}
             onCancelJob={setCancelTarget}
-            // total count comes from server, not the current page
+            // ---- total count from server, not the current page --------
             totalCount={pagination.total}
+            // ---- show the status dropdown only when it makes sense ----
+            showStatusFilter={true}
           />
         )}
 

@@ -35,6 +35,7 @@ const BULK_SELECTABLE_STATUSES = [
   JOB_STATUS.REGISTERED,
   JOB_STATUS.SERVICE_CENTER_ASSIGNED,
   JOB_STATUS.SERVICE_ENGINEER_ASSIGNED,
+  JOB_STATUS.PENDING,
   JOB_STATUS.HOLD,
 ];
 
@@ -183,7 +184,7 @@ function EmptyState({ hasFilters, onClear }) {
  * -----
  * title, subtitle                 → header text
  * jobs                            → array of job docs from the server (current page)
- * variant                         → "registered" | "serviceCenter" | "serviceEngineer" | "hold" | "completed" | "cancelled" | "all"
+ * variant                         → "registered" | "serviceCenter" | "serviceEngineer" | "pending" | "hold" | "completed" | "cancelled" | "all"
  * serviceEngineerOptions          → list of engineers for the "Assigned Engineer" filter
  * filters                         → { search, status, jobSource, callType, natureOfWork, serviceEngineer, dateFrom, dateTo, sort }
  * onFiltersChange                 → (patch) => void  — parent updates URL, refetches
@@ -191,6 +192,7 @@ function EmptyState({ hasFilters, onClear }) {
  * onEditJob, onAssignJob,
  * onViewLogs, onCancelJob         → row-level callbacks
  * hideActions                     → hide the Actions column entirely
+ * showStatusFilter                → explicit override; when undefined falls back to "all variant only"
  */
 export default function ServiceCenterJobsTable({
   title,
@@ -206,6 +208,7 @@ export default function ServiceCenterJobsTable({
   onViewLogs,
   onCancelJob,
   hideActions = false,
+  showStatusFilter: showStatusFilterProp,
 }) {
   // ---- Controlled filter values (from URL) --------------------------------
   const search = filters.search ?? "";
@@ -230,14 +233,20 @@ export default function ServiceCenterJobsTable({
   const debouncedSearch = useDebouncedValue(searchInput, 350);
   const isFirstSearchSync = useRef(true);
 
-  // Variant-driven UI
+  // ---- Variant-driven UI --------------------------------------------------
   const isAllVariant = variant === "all";
-  const showStatusFilter = isAllVariant;
+
+  // Explicit prop wins; fall back to legacy rule otherwise.
+  const showStatusFilter =
+    typeof showStatusFilterProp === "boolean"
+      ? showStatusFilterProp
+      : isAllVariant;
+
   const showAssignAction = isAllVariant
     ? null
     : variant === "registered" || variant === "serviceCenter";
   const showServiceEngineerFilter =
-    isAllVariant || ["serviceEngineer", "hold"].includes(variant);
+    isAllVariant || ["serviceEngineer", "pending", "hold"].includes(variant);
   const showHoldReasonColumn = isAllVariant || variant === "hold";
   const showCancelReasonColumn = isAllVariant || variant === "cancelled";
   const showCancelAction = isAllVariant ? null : variant === "registered";
@@ -278,7 +287,7 @@ export default function ServiceCenterJobsTable({
   );
 
   // -------------------------------------------------------------------------
-  // Keep local search box in sync when URL changes externally (e.g. Clear)
+  // Keep local search box in sync when URL changes externally
   // -------------------------------------------------------------------------
   useEffect(() => {
     setSearchInput(search);
@@ -321,7 +330,7 @@ export default function ServiceCenterJobsTable({
   }, []);
 
   // -------------------------------------------------------------------------
-  // Selection
+  // Row predicates
   // -------------------------------------------------------------------------
   function canAssignRow(job) {
     return isAllVariant
@@ -337,14 +346,16 @@ export default function ServiceCenterJobsTable({
     return BULK_SELECTABLE_STATUSES.includes(job.status);
   }
 
+  // -------------------------------------------------------------------------
+  // Selection
+  // -------------------------------------------------------------------------
   const selectableRows = useMemo(
     () => filtered.filter(canSelectRow),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [filtered],
   );
   const allSelected =
-    selectableRows.length > 0 &&
-    selected.length === selectableRows.length;
+    selectableRows.length > 0 && selected.length === selectableRows.length;
 
   function toggleAll() {
     setSelected(allSelected ? [] : selectableRows.map((j) => j._id));

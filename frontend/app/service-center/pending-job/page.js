@@ -12,7 +12,7 @@ export default function JobsPage() {
         </h2>
       </div>
 
-      <ViewServiceCenterJobPage status={"pending"} />
+      <ViewServiceCenterJobPage status={"Pending"} />
     </div>
   );
 }

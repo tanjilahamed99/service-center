@@ -782,32 +782,115 @@ exports.getMySparePartTransactions = async (req, res) => {
 exports.serviceCenterJobsByStatus = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
-    const { status } = req.query;
+    const {
+      status,
+      search,
+      jobSource,
+      callType,
+      natureOfWork,
+      serviceEngineer,
+      dateFrom,
+      dateTo,
+      sort = "desc",
+      page = 1,
+      limit = 20,
+    } = req.query;
 
-    const filter = {
-      assignedServiceCenter: serviceCenter,
-    };
+    // ---- Base scope: this service center only --------------------------
+    const filter = { assignedServiceCenter: serviceCenter };
 
-    if (status === "Completed") {
-      // Completed tab → only completed jobs
-      filter.status = "Completed";
-    } else {
-      // Pending / active / no status → everything except completed
-      filter.status = { $ne: "Completed" };
+    switch (status) {
+      case "Pending":
+        filter.status = { $ne: null };
+        filter.status = {
+          $nin: ["Completed", "Cancelled"],
+        };
+        break;
+
+      case "Completed":
+        filter.status = "Completed";
+        break;
+
+      case undefined:
+      case "":
+      case null:
+        filter.status = { $ne: "Completed" };
+        break;
+
+      default:
+        filter.status = status;
+        break;
     }
 
-    const jobs = await Job.find(filter)
-      .populate("customer")
-      .populate("assignedServiceEngineer", "name")
-      .sort({ createdAt: -1 });
+    // ---- Exact-match filters -------------------------------------------
+    if (jobSource) filter.jobSource = jobSource;
+    if (callType) filter.callType = callType;
+    if (natureOfWork) filter.natureOfWork = natureOfWork;
+
+    // Note: if the caller ALSO passed serviceEngineer explicitly, apply it.
+    // If status=Pending already set assignedServiceEngineer, this narrows further.
+    if (serviceEngineer) {
+      filter.assignedServiceEngineer = serviceEngineer;
+    }
+
+    // ---- Date range on complaintDate -----------------------------------
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom) {
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      }
+      if (dateTo) {
+        filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+      }
+    }
+
+    // ---- Free-text search ----------------------------------------------
+    if (search && search.trim()) {
+      const term = search.trim();
+      const rx = new RegExp(escapeRegex(term), "i");
+
+      const Customer = mongoose.model("Customer");
+      const matchingCustomers = await Customer.find({
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
+
+      filter.$or = [
+        { complaintNumber: rx },
+        { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
+      ];
+    }
+
+    // ---- Paginate ------------------------------------------------------
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
+
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("customer")
+        .populate("assignedServiceEngineer", "name contactNumber")
+        .sort({ complaintDate: sortDir, createdAt: sortDir })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Job.countDocuments(filter),
+    ]);
 
     return res.status(200).json({
       success: true,
       data: jobs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.max(Math.ceil(total / limitNum), 1),
+      },
     });
   } catch (error) {
-    console.error("myJobs error:", error);
-
+    console.error("serviceCenterJobsByStatus error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch jobs",
