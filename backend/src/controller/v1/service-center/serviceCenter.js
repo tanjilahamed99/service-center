@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 
 const SparePartStock = require("../../../models/SparePartStock");
 const SparePartTransaction = require("../../../models/SparePartTransaction");
+const { default: mongoose } = require("mongoose");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_STATUSES = [
@@ -19,22 +20,101 @@ const OPEN_STATUSES = [
 /* =========================================================
    JOBS
    ========================================================= */
+// Helper — prevent regex injection from user input
+function escapeRegex(str = "") {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 // GET /service-center/jobs?status=Hold
+// GET /service-center/jobs?status=Hold&search=john&natureOfWork=Repair&...
 exports.serviceCenterJobs = async (req, res) => {
   try {
     const serviceCenter = req.user._id;
-    const { status } = req.query;
+    const {
+      status,
+      search,
+      jobSource,
+      callType,
+      natureOfWork,
+      serviceEngineer,
+      dateFrom,
+      dateTo,
+      sort = "desc",
+      page = 1,
+      limit = 20,
+    } = req.query;
 
+    // ---- Base scope: this service center only --------------------------
     const filter = { assignedServiceCenter: serviceCenter };
     if (status) filter.status = status;
 
-    const jobs = await Job.find(filter)
-      .populate("customer")
-      .populate("assignedServiceEngineer", "name contactNumber")
-      .sort({ createdAt: -1 });
+    // ---- Exact-match filters ------------------------------------------
+    if (jobSource) filter.jobSource = jobSource;
+    if (callType) filter.callType = callType;
+    if (natureOfWork) filter.natureOfWork = natureOfWork;
+    if (serviceEngineer) filter.assignedServiceEngineer = serviceEngineer;
 
-    return res.status(200).json({ success: true, data: jobs });
+    // ---- Date range on complaintDate (inclusive) -----------------------
+    if (dateFrom || dateTo) {
+      filter.complaintDate = {};
+      if (dateFrom)
+        filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo) {
+        // Include the whole end day
+        const end = new Date(`${dateTo}T23:59:59.999Z`);
+        filter.complaintDate.$lte = end;
+      }
+    }
+
+    // ---- Free-text search across complaintNumber / customer -------------
+    // If complaintNumber or customer fields can be searched, use $or.
+    // For customer name we must query the Customer collection and match by id.
+    if (search && search.trim()) {
+      const term = search.trim();
+      const rx = new RegExp(escapeRegex(term), "i");
+
+      // Find matching customers first (name / mobile)
+      const Customer = mongoose.model("Customer"); // adjust if needed
+      const matchingCustomers = await Customer.find({
+        $or: [{ name: rx }, { mobileNumber: rx }],
+      })
+        .select("_id")
+        .lean();
+
+      filter.$or = [
+        { complaintNumber: rx },
+        { customer: { $in: matchingCustomers.map((c) => c._id) } },
+        // Optional: also match raw _id if user pastes an id
+        ...(mongoose.isValidObjectId(term) ? [{ _id: term }] : []),
+      ];
+    }
+
+    // ---- Paginate ------------------------------------------------------
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const sortDir = sort === "asc" ? 1 : -1;
+
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("customer")
+        .populate("assignedServiceEngineer", "name contactNumber")
+        .sort({ complaintDate: sortDir })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Job.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: jobs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.max(Math.ceil(total / limitNum), 1),
+      },
+    });
   } catch (error) {
     console.error("serviceCenterJobs error:", error);
     return res.status(500).json({

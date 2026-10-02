@@ -31,18 +31,26 @@ export default function ViewServiceCenterJobPage({ title, subtitle, status }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+
   const [serviceEngineers, setServiceEngineers] = useState([]);
   const [logsTarget, setLogsTarget] = useState(null); // single job
   const [assignTarget, setAssignTarget] = useState(null); // array of job ids
-
 
   const fetchJobs = useCallback(
     async (extraParams = {}) => {
       setLoading(true);
       setError("");
       try {
-        const res = await getServiceCenterJobDataByStatus({ status });
+        const res = await getServiceCenterJobDataByStatus({
+          status,
+          page: targetPage,
+          limit: PAGE_SIZE,
+        });
+        console.log(res.data);
         setJobs(res.data?.data ?? []);
+        setPagination(res.data?.pagination ?? { total: 0, pages: 1 });
       } catch (err) {
         console.error("Failed to load jobs", err);
         setError("Failed to load jobs.");

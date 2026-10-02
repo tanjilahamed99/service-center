@@ -252,7 +252,8 @@ export default function JobsTable({
         !search ||
         job?.complaintNumber?.toLowerCase().includes(search.toLowerCase()) ||
         job?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        job?.customer?.mobileNumber?.includes(search);
+        job?.customer?.mobileNumber?.includes(search) ||
+        job?._id?.includes(search);
       const matchesStatus = !status || job?.status === status;
       const matchesJobSource = !jobSource || job?.jobSource === jobSource;
       const matchesCallType = !callType || job?.callType === callType;
