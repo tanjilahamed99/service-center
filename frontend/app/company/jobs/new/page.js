@@ -170,11 +170,15 @@ export default function CreateJobPage() {
   async function handleAddCustomer(newCustomer) {
     try {
       const res = await createCustomer(newCustomer);
-      setCustomer(res.data?.data ?? null);
-      setAddCustomerOpen(false);
+      if (!res.data?.success) {
+        return toast.error(res.data?.message || "Failed to create customer");
+      } else {
+        setAddCustomerOpen(false);
+        setCustomer(res.data?.data ?? null);
+      }
     } catch (err) {
       console.error("Failed to create customer", err);
-      // surface to the modal however it expects errors — e.g. a toast
+      toast.error(err.response?.data?.message || "Failed to create customer");
     }
   }
 

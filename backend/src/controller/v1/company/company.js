@@ -732,9 +732,9 @@ exports.createCustomer = async (req, res) => {
       });
     }
 
-    const existing = await Customer.findOne({ company, mobileNumber });
+    const existing = await Customer.findOne({ mobileNumber });
     if (existing) {
-      return res.status(409).json({
+      return res.json({
         success: false,
         message: "A customer with this mobile number already exists",
         data: existing,
