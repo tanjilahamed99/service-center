@@ -246,6 +246,7 @@ exports.createJob = async (req, res) => {
 // query: search, status, jobSource, callType, natureOfWork,
 //        serviceCenter, serviceEngineer, dateFrom, dateTo,
 //        sort, page, limit
+
 exports.getJobs = async (req, res) => {
   try {
     const company = req.user._id;
@@ -260,6 +261,8 @@ exports.getJobs = async (req, res) => {
       serviceEngineer,
       dateFrom,
       dateTo,
+      solvedFrom,
+      solvedTo,
       sort = "desc",
       page = 1,
       limit = 20,
@@ -285,6 +288,15 @@ exports.getJobs = async (req, res) => {
         filter.complaintDate.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
       if (dateTo)
         filter.complaintDate.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    // ---- Date range on solveDate (inclusive) -----------------------------
+    if (solvedFrom || solvedTo) {
+      filter.solveDate = {};
+      if (solvedFrom)
+        filter.solveDate.$gte = new Date(`${solvedFrom}T00:00:00.000Z`);
+      if (solvedTo)
+        filter.solveDate.$lte = new Date(`${solvedTo}T23:59:59.999Z`);
     }
 
     // ---- Free-text search across complaintNumber / customer --------------
@@ -343,6 +355,9 @@ exports.getJobs = async (req, res) => {
     });
   }
 };
+
+
+
 // GET /api/companies/getJobById/:id
 exports.getJobById = async (req, res) => {
   try {

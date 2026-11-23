@@ -53,6 +53,8 @@ const FILTER_KEYS = [
   "serviceEngineer",
   "dateFrom",
   "dateTo",
+  "solvedFrom",
+  "solvedTo",
   "sort",
 ];
 
@@ -184,10 +186,9 @@ export default function JobsListPage({ variant, title, subtitle }) {
       if (resetPage) params.delete("page");
 
       startTransition(() => {
-        router.push(
-          params.toString() ? `${pathname}?${params}` : pathname,
-          { scroll: false },
-        );
+        router.push(params.toString() ? `${pathname}?${params}` : pathname, {
+          scroll: false,
+        });
       });
     },
     [pathname, router, searchParams],
@@ -201,10 +202,9 @@ export default function JobsListPage({ variant, title, subtitle }) {
       else params.set("page", String(nextPage));
 
       startTransition(() => {
-        router.push(
-          params.toString() ? `${pathname}?${params}` : pathname,
-          { scroll: false },
-        );
+        router.push(params.toString() ? `${pathname}?${params}` : pathname, {
+          scroll: false,
+        });
       });
     },
     [page, pathname, router, searchParams],
@@ -251,27 +251,23 @@ export default function JobsListPage({ variant, title, subtitle }) {
       {error && (
         <div
           role="alert"
-          className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
-        >
+          className="mb-4 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => fetchJobs(page, filters, { bypassCache: true })}
-            className="font-medium underline hover:no-underline"
-          >
+            className="font-medium underline hover:no-underline">
             Retry
           </button>
         </div>
       )}
-
       <div
         aria-busy={isPending}
         className={
           isPending
             ? "pointer-events-none opacity-60 transition-opacity duration-150"
             : "transition-opacity duration-150"
-        }
-      >
+        }>
         {showInitialSkeleton ? (
           <div className="animate-pulse space-y-3">
             <div className="h-8 w-64 rounded bg-slate-200" />

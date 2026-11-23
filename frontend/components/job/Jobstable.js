@@ -122,8 +122,7 @@ function ActionButton({ label, Icon, onClick, tone = "slate", size = "md" }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`flex ${dim} shrink-0 items-center justify-center rounded-lg text-black transition ${toneClass}`}
-    >
+      className={`flex ${dim} shrink-0 items-center justify-center rounded-lg text-black transition ${toneClass}`}>
       <Icon className="h-4 w-4" strokeWidth={1.75} />
     </button>
   );
@@ -199,8 +198,7 @@ function EmptyState({ hasFilters, onClear }) {
         <button
           type="button"
           onClick={onClear}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
+          className="rounded-lg border border-slate-200 bg-black px-3 py-1.5 text-xs font-medium text-black hover:bg-slate-50">
           Clear filters
         </button>
       )}
@@ -239,6 +237,8 @@ export default function JobsTable({
   const serviceEngineer = filters.serviceEngineer ?? "";
   const dateFrom = filters.dateFrom ?? "";
   const dateTo = filters.dateTo ?? "";
+  const solvedFrom = filters.solvedFrom ?? "";
+  const solvedTo = filters.solvedTo ?? "";
   const sortDesc = (filters.sort ?? "desc") === "desc";
 
   // ---- Local state --------------------------------------------------------
@@ -289,6 +289,8 @@ export default function JobsTable({
       serviceEngineer: "",
       dateFrom: "",
       dateTo: "",
+      solvedFrom: "",
+      solvedTo: "",
       // sort preserved
     });
     setSearchInput("");
@@ -297,14 +299,16 @@ export default function JobsTable({
 
   const hasActiveFilters = Boolean(
     search ||
-      status ||
-      jobSource ||
-      callType ||
-      nature ||
-      serviceCenter ||
-      serviceEngineer ||
-      dateFrom ||
-      dateTo,
+    status ||
+    jobSource ||
+    callType ||
+    nature ||
+    serviceCenter ||
+    serviceEngineer ||
+    dateFrom ||
+    dateTo ||
+    solvedFrom ||
+    solvedTo,
   );
 
   // Keep search box synced when URL changes externally.
@@ -351,9 +355,7 @@ export default function JobsTable({
       : Boolean(showAssignAction);
   }
   function canSelectRow(job) {
-    return isAllVariant
-      ? BULK_SELECTABLE_STATUSES.includes(job.status)
-      : true;
+    return isAllVariant ? BULK_SELECTABLE_STATUSES.includes(job.status) : true;
   }
 
   const selectableRows = useMemo(
@@ -374,9 +376,7 @@ export default function JobsTable({
   }
 
   useEffect(() => {
-    setSelected((prev) =>
-      prev.filter((id) => jobs.some((j) => j._id === id)),
-    );
+    setSelected((prev) => prev.filter((id) => jobs.some((j) => j._id === id)));
   }, [jobs]);
 
   // ---- Render -------------------------------------------------------------
@@ -425,8 +425,7 @@ export default function JobsTable({
                 type="button"
                 onClick={() => setSearchInput("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                 <X className="h-3.5 w-3.5" strokeWidth={2} />
               </button>
             )}
@@ -439,8 +438,7 @@ export default function JobsTable({
                 value={status}
                 onChange={(e) => setFilter("status", e.target.value)}
                 className={selectClass}
-                aria-label="Filter by status"
-              >
+                aria-label="Filter by status">
                 <option value="">All Statuses</option>
                 {JOB_STATUS_LIST?.map((opt) => (
                   <option key={opt} value={opt}>
@@ -454,8 +452,7 @@ export default function JobsTable({
               value={jobSource}
               onChange={(e) => setFilter("jobSource", e.target.value)}
               className={selectClass}
-              aria-label="Filter by job source"
-            >
+              aria-label="Filter by job source">
               <option value="">All Job Sources</option>
               {jobSourceOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -468,8 +465,7 @@ export default function JobsTable({
               value={callType}
               onChange={(e) => setFilter("callType", e.target.value)}
               className={selectClass}
-              aria-label="Filter by call type"
-            >
+              aria-label="Filter by call type">
               <option value="">All Call Types</option>
               {callTypeOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -482,8 +478,7 @@ export default function JobsTable({
               value={nature}
               onChange={(e) => setFilter("natureOfWork", e.target.value)}
               className={selectClass}
-              aria-label="Filter by nature of work"
-            >
+              aria-label="Filter by nature of work">
               <option value="">All Nature of Work</option>
               {natureOfWorkOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -497,8 +492,7 @@ export default function JobsTable({
                 value={serviceCenter}
                 onChange={(e) => setFilter("serviceCenter", e.target.value)}
                 className={selectClass}
-                aria-label="Filter by service center"
-              >
+                aria-label="Filter by service center">
                 <option value="">All Service Centers</option>
                 {serviceCenterOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -511,12 +505,9 @@ export default function JobsTable({
             {showServiceEngineerFilter && (
               <select
                 value={serviceEngineer}
-                onChange={(e) =>
-                  setFilter("serviceEngineer", e.target.value)
-                }
+                onChange={(e) => setFilter("serviceEngineer", e.target.value)}
                 className={`${selectClass} col-span-2 sm:col-span-1`}
-                aria-label="Filter by service engineer"
-              >
+                aria-label="Filter by service engineer">
                 <option value="">All Service Engineers</option>
                 {serviceEngineerOptions.map((opt) => (
                   <option key={opt._id} value={opt._id}>
@@ -526,7 +517,7 @@ export default function JobsTable({
               </select>
             )}
 
-            {/* Date range */}
+            {/* Booked date range */}
             <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
               <CalendarRange
                 className="h-4 w-4 shrink-0 text-slate-400"
@@ -551,12 +542,39 @@ export default function JobsTable({
               />
             </div>
 
+            {/* Solved date range */}
+            <div className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 sm:col-span-1 sm:w-auto">
+              <CalendarRange
+                className="h-4 w-4 shrink-0 text-emerald-500"
+                strokeWidth={1.75}
+              />
+              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                Solved
+              </span>
+              <input
+                type="date"
+                value={solvedFrom}
+                onChange={(e) => setFilter("solvedFrom", e.target.value)}
+                max={solvedTo || undefined}
+                aria-label="Solved from date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+              <span className="text-slate-300">–</span>
+              <input
+                type="date"
+                value={solvedTo}
+                onChange={(e) => setFilter("solvedTo", e.target.value)}
+                min={solvedFrom || undefined}
+                aria-label="Solved to date"
+                className="w-[120px] border-none bg-transparent p-0 text-sm font-medium text-navy-900 focus:outline-none focus:ring-0"
+              />
+            </div>
+
             {/* Sort */}
             <button
               type="button"
               onClick={() => setFilter("sort", sortDesc ? "asc" : "desc")}
-              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-black hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto"
-            >
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-black hover:bg-slate-50 sm:col-span-1 sm:ml-auto sm:w-auto">
               <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.75} />
               {sortDesc ? "Newest first" : "Oldest first"}
             </button>
@@ -565,8 +583,7 @@ export default function JobsTable({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="col-span-2 rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto"
-              >
+                className="col-span-2 text-black border-gray-300 border rounded-lg px-3 py-2 text-sm font-medium text-electric-600 hover:bg-electric-500/10 sm:col-span-1 sm:w-auto">
                 Clear filters
               </button>
             )}
@@ -584,8 +601,7 @@ export default function JobsTable({
             <button
               type="button"
               onClick={() => setSelected([])}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
-            >
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100">
               Clear
             </button>
             <button
@@ -594,8 +610,7 @@ export default function JobsTable({
                 onAssignJob?.(selected);
                 setSelected([]);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110"
-            >
+              className="inline-flex items-center gap-1.5 rounded-lg bg-electric-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:brightness-110">
               <UserPlus className="h-3.5 w-3.5" />
               Assign {selected.length} to Service Center
             </button>
@@ -667,8 +682,7 @@ export default function JobsTable({
                 return (
                   <tr
                     key={job._id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
-                  >
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
                     {/* Select */}
                     <td className="px-4 py-3.5">
                       <input
@@ -710,8 +724,7 @@ export default function JobsTable({
                       <div className="min-w-[220px]">
                         <p
                           className="whitespace-nowrap font-medium text-navy-900"
-                          title={job.customer?.name}
-                        >
+                          title={job.customer?.name}>
                           {job.customer?.name || "N/A"}
                         </p>
 
@@ -719,8 +732,7 @@ export default function JobsTable({
                           <a
                             href={`tel:${job.customer.mobileNumber}`}
                             className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                            title={`Call ${job.customer.mobileNumber}`}
-                          >
+                            title={`Call ${job.customer.mobileNumber}`}>
                             <Phone
                               size={13}
                               strokeWidth={1.75}
@@ -740,8 +752,7 @@ export default function JobsTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-1 flex max-w-[260px] items-center gap-1 text-xs text-blue-600 transition-colors hover:text-blue-800 hover:underline"
-                            title={`Open location: ${job.customer.address}`}
-                          >
+                            title={`Open location: ${job.customer.address}`}>
                             <MapPin
                               size={13}
                               strokeWidth={1.75}
@@ -759,8 +770,7 @@ export default function JobsTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-emerald-600 transition-colors hover:text-emerald-800 hover:underline"
-                            title="Where the engineer closed this job"
-                          >
+                            title="Where the engineer closed this job">
                             <MapPin
                               size={13}
                               strokeWidth={1.75}
@@ -829,8 +839,7 @@ export default function JobsTable({
                         title={
                           job?.assignedServiceEngineer?.name ||
                           job?.assignedServiceCenter?.name
-                        }
-                      >
+                        }>
                         {job?.assignedServiceEngineer?.name ||
                           job?.assignedServiceCenter?.name ||
                           "—"}
@@ -841,8 +850,7 @@ export default function JobsTable({
                       <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         <span
                           className="whitespace-nowrap"
-                          title={job.holdReason ?? ""}
-                        >
+                          title={job.holdReason ?? ""}>
                           {job.holdReason ?? "—"}
                         </span>
                       </td>
@@ -852,8 +860,7 @@ export default function JobsTable({
                       <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                         <span
                           className="whitespace-nowrap"
-                          title={job.cancelReason ?? ""}
-                        >
+                          title={job.cancelReason ?? ""}>
                           {job.cancelReason ?? "—"}
                         </span>
                       </td>
